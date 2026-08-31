@@ -1,0 +1,69 @@
+<aside class="sidebar">
+  <div class="header">
+    <h2>Estimador de Accidentes</h2>
+    <span class="badge">Bogotá D.C.</span>
+  </div>
+
+  <div class="filter-section">
+    <h3>Filtros Temporales</h3>
+    <div class="form-group">
+      <label>Día de la semana:</label>
+      <select disabled>
+        <option>Seleccionar día...</option>
+        <option>Lunes</option>
+        <option>Viernes</option>
+        <option>Sábado</option>
+        <option>Domingo</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Franja Horaria:</label>
+      <select disabled>
+        <option>Seleccionar franja...</option>
+        <option>Madrugada (00:00 - 06:00)</option>
+        <option>Pico Mañana (06:00 - 09:00)</option>
+        <option>Valle (09:00 - 16:00)</option>
+        <option>Pico Tarde/Noche (16:00 - 20:00)</option>
+        <option>Noche (20:00 - 00:00)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="filter-section">
+    <h3>Filtros Espaciales</h3>
+    <div class="form-group">
+      <label>Localidad:</label>
+      <select disabled>
+        <option>Todas las localidades</option>
+        <option>Usaquén</option>
+        <option>Chapinero</option>
+        <option>Kennedy</option>
+        <option>Suba</option>
+        <option>Engativá</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="filter-section">
+    <h3>Variables del Entorno (Lluvia / Clima)</h3>
+    <div class="checkbox-group">
+      <label><input type="checkbox" disabled /> Condición de Lluvia</label>
+      <label><input type="checkbox" disabled /> Día Festivo / Feriado</label>
+    </div>
+  </div>
+
+  <div class="filter-section">
+    <h3>Visualización y Capas</h3>
+    <div class="radio-group">
+      <label><input type="radio" name="layer" checked disabled /> Mapa de Calor (Densidad)</label>
+      <label><input type="radio" name="layer" disabled /> Segmentos Viales Críticos</label>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" disabled>Calcular Riesgo (ML)</button>
+    <button class="btn btn-secondary" disabled>Limpiar Filtros</button>
+    <button class="btn btn-outline" disabled>Exportar Reporte</button>
+  </div>
+</aside>

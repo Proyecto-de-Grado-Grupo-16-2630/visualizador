@@ -1,0 +1,24 @@
+<div class="map-wrapper">
+  <!-- Contenedor del lienzo Leaflet -->
+  <div id="map-container" class="map-container"></div>
+
+  <!-- Indicador visual de carga -->
+  <div class="loading-overlay" *ngIf="isLoading()">
+    <div class="spinner"></div>
+    <span>Cargando malla vial intermedia (POT Bogotá)...</span>
+  </div>
+
+  <!-- Mensaje de error si falla la lectura -->
+  <div class="error-overlay" *ngIf="errorMessage()">
+    <span>{{ errorMessage() }}</span>
+  </div>
+
+  <!-- Leyenda informativa -->
+  <div class="map-legend">
+    <h4>Malla Vial de Bogotá</h4>
+    <div class="legend-item">
+      <span class="legend-line blue-line"></span>
+      <span>Malla Vial Intermedia (POT)</span>
+    </div>
+  </div>
+</div>
