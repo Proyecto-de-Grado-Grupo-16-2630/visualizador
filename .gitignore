@@ -1,0 +1,31 @@
+# Node & Angular
+node_modules/
+.angular/
+dist/
+.npm/
+
+# IDEs & Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Entornos y compilación de Java/Spring Boot
+target/
+*.class
+.mvn/
+*.jar
+*.war
+
+# Python & Entornos virtuales
+__pycache__/
+*.pyc
+*.pyo
+venv/
+env/
+.env
+
+# Archivos pesados y temporales del sistema
+.DS_Store
+Thumbs.db
+*.log
