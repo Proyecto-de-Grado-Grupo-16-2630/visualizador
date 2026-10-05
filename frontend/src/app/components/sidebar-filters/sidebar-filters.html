@@ -1,69 +1,153 @@
 <aside class="sidebar">
-  <div class="header">
-    <h2>Estimador de Accidentes</h2>
-    <span class="badge">Bogotá D.C.</span>
+  <div class="sidebar-header">
+    <div class="title-group">
+      <h2>Visualizador Vial</h2>
+      <span class="badge">Bogotá D.C.</span>
+    </div>
+    <p class="subtitle">Análisis geoespacial de red vial y movilidad</p>
   </div>
 
-  <div class="filter-section">
-    <h3>Filtros Temporales</h3>
-    <div class="form-group">
-      <label>Día de la semana:</label>
-      <select disabled>
-        <option>Seleccionar día...</option>
-        <option>Lunes</option>
-        <option>Viernes</option>
-        <option>Sábado</option>
-        <option>Domingo</option>
-      </select>
-    </div>
+  <div class="sidebar-content">
+    <section class="control-card">
+      <div class="section-title">
+        <span class="icon">📍</span>
+        <h3>Sectorización Espacial</h3>
+      </div>
+      
+      <div class="field-group">
+        <label for="locality-select">Localidad de Bogotá:</label>
+        <div class="select-wrapper">
+          <select id="locality-select" (change)="onLocalityChange($event)" [value]="mapState.selectedLocality()">
+            <option value="none">Seleccionar localidad...</option>
+            <option value="all_city">Toda Bogotá (Todas las localidades)</option>
+            <option value="usaquen">Usaquén</option>
+            <option value="chapinero">Chapinero</option>
+            <option value="santafe">Santa Fe</option>
+            <option value="sancristobal">San Cristóbal</option>
+            <option value="usme">Usme</option>
+            <option value="tunjuelito">Tunjuelito</option>
+            <option value="bosa">Bosa</option>
+            <option value="kennedy">Kennedy</option>
+            <option value="fontibon">Fontibón</option>
+            <option value="engativa">Engativá</option>
+            <option value="suba">Suba</option>
+            <option value="barriosunidos">Barrios Unidos</option>
+            <option value="teusaquillo">Teusaquillo</option>
+            <option value="losmartires">Los Mártires</option>
+            <option value="antonionarino">Antonio Nariño</option>
+            <option value="puentearanda">Puente Aranda</option>
+            <option value="lacandelaria">La Candelaria</option>
+            <option value="rafaeluribe">Rafael Uribe Uribe</option>
+            <option value="ciudadbolivar">Ciudad Bolívar</option>
+            <option value="sumapaz">Sumapaz</option>
+          </select>
+        </div>
+      </div>
 
-    <div class="form-group">
-      <label>Franja Horaria:</label>
-      <select disabled>
-        <option>Seleccionar franja...</option>
-        <option>Madrugada (00:00 - 06:00)</option>
-        <option>Pico Mañana (06:00 - 09:00)</option>
-        <option>Valle (09:00 - 16:00)</option>
-        <option>Pico Tarde/Noche (16:00 - 20:00)</option>
-        <option>Noche (20:00 - 00:00)</option>
-      </select>
-    </div>
+      <div class="field-group" *ngIf="mapState.selectedLocality() !== 'none'">
+        <label for="road-search">Buscar vía en el sector:</label>
+        <div class="search-box">
+          <input
+            id="road-search"
+            type="text"
+            placeholder="Ej: Carrera 7, Calle 26..."
+            [(ngModel)]="searchQueryText"
+            (keyup.enter)="onSearch()"
+          />
+          <button type="button" class="btn-search-action" (click)="onSearch()">
+            Buscar
+          </button>
+        </div>
+
+        <div class="search-actions-row" *ngIf="mapState.activeSearchQuery().length > 0">
+          <label class="isolate-label">
+            <input
+              type="checkbox"
+              [checked]="mapState.isolateSearchedRoad()"
+              (change)="onToggleIsolate()"
+            />
+            Ocultar las demás vías
+          </label>
+          <button
+            type="button"
+            class="btn-clear-search"
+            (click)="onClearSearch()"
+          >
+            ✕ Quitar
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="control-card" *ngIf="mapState.selectedLocality() !== 'none'">
+      <div class="section-title">
+        <span class="icon">🛣️</span>
+        <h3>Jerarquía Vial</h3>
+      </div>
+      
+      <div class="hierarchy-list">
+        <label class="hierarchy-item">
+          <input
+            type="checkbox"
+            [checked]="mapState.selectedRoadTypes()['primary']"
+            (change)="onToggleType('primary')"
+          />
+          <span class="custom-check"></span>
+          <div class="hierarchy-meta">
+            <span class="hierarchy-name">Vías Arteriales y Troncales</span>
+            <span class="hierarchy-desc">Autopistas, avenidas principales</span>
+          </div>
+        </label>
+
+        <label class="hierarchy-item">
+          <input
+            type="checkbox"
+            [checked]="mapState.selectedRoadTypes()['secondary']"
+            (change)="onToggleType('secondary')"
+          />
+          <span class="custom-check"></span>
+          <div class="hierarchy-meta">
+            <span class="hierarchy-name">Vías Secundarias</span>
+            <span class="hierarchy-desc">Conexión interbarrial continua</span>
+          </div>
+        </label>
+
+        <label class="hierarchy-item">
+          <input
+            type="checkbox"
+            [checked]="mapState.selectedRoadTypes()['tertiary']"
+            (change)="onToggleType('tertiary')"
+          />
+          <span class="custom-check"></span>
+          <div class="hierarchy-meta">
+            <span class="hierarchy-name">Vías Colectoras</span>
+            <span class="hierarchy-desc">Distribución local intermedia</span>
+          </div>
+        </label>
+
+        <label class="hierarchy-item">
+          <input
+            type="checkbox"
+            [checked]="mapState.selectedRoadTypes()['residential']"
+            (change)="onToggleType('residential')"
+          />
+          <span class="custom-check"></span>
+          <div class="hierarchy-meta">
+            <span class="hierarchy-name">Vías Residenciales</span>
+            <span class="hierarchy-desc">Acceso predial y barrial</span>
+          </div>
+        </label>
+      </div>
+    </section>
   </div>
 
-  <div class="filter-section">
-    <h3>Filtros Espaciales</h3>
-    <div class="form-group">
-      <label>Localidad:</label>
-      <select disabled>
-        <option>Todas las localidades</option>
-        <option>Usaquén</option>
-        <option>Chapinero</option>
-        <option>Kennedy</option>
-        <option>Suba</option>
-        <option>Engativá</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="filter-section">
-    <h3>Variables del Entorno (Lluvia / Clima)</h3>
-    <div class="checkbox-group">
-      <label><input type="checkbox" disabled /> Condición de Lluvia</label>
-      <label><input type="checkbox" disabled /> Día Festivo / Feriado</label>
-    </div>
-  </div>
-
-  <div class="filter-section">
-    <h3>Visualización y Capas</h3>
-    <div class="radio-group">
-      <label><input type="radio" name="layer" checked disabled /> Mapa de Calor (Densidad)</label>
-      <label><input type="radio" name="layer" disabled /> Segmentos Viales Críticos</label>
-    </div>
-  </div>
-
-  <div class="actions">
-    <button class="btn btn-primary" disabled>Calcular Riesgo (ML)</button>
-    <button class="btn btn-secondary" disabled>Limpiar Filtros</button>
-    <button class="btn btn-outline" disabled>Exportar Reporte</button>
+  <div class="sidebar-footer">
+    <button
+      class="btn-reset"
+      (click)="resetFilters()"
+      [disabled]="mapState.selectedLocality() === 'none'"
+    >
+      Restablecer Vista General
+    </button>
   </div>
 </aside>

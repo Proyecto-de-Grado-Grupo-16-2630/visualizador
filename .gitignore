@@ -29,3 +29,13 @@ env/
 .DS_Store
 Thumbs.db
 *.log
+
+# Bases de datos y binarios locales
+*.db
+*.sqlite
+*.sqlite3
+*.7z
+
+# Mapas de prueba temporales generados por scripts
+mapa_*.html
+verificacion_mapa.html

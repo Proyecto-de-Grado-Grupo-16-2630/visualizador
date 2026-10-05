@@ -10,40 +10,136 @@
     z-index: 1;
   }
 
-  .loading-overlay {
+  .map-kpi-bar {
     position: absolute;
-    top: 50%;
+    top: 15px;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translateX(-50%);
     z-index: 1000;
-    background: rgba(26, 32, 44, 0.95);
-    color: #edf2f7;
-    padding: 16px 24px;
-    border-radius: 8px;
     display: flex;
     align-items: center;
-    gap: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    gap: 16px;
+    background: rgba(26, 32, 44, 0.92);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(74, 85, 104, 0.4);
+    border-radius: 8px;
+    padding: 8px 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    color: #edf2f7;
 
-    .spinner {
-      width: 22px;
-      height: 22px;
-      border: 3px solid rgba(255, 255, 255, 0.2);
-      border-top-color: #3182ce;
+    .kpi-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+
+      .kpi-title {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: #a0aec0;
+      }
+
+      .kpi-value {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #edf2f7;
+
+        &.highlight {
+          color: #63b3ed;
+        }
+      }
+    }
+
+    .kpi-divider {
+      width: 1px;
+      height: 26px;
+      background: rgba(74, 85, 104, 0.6);
+    }
+  }
+
+  .empty-state-card {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(26, 32, 44, 0.94);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(99, 179, 237, 0.35);
+    border-radius: 10px;
+    padding: 14px 22px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    color: #edf2f7;
+    max-width: 480px;
+
+    .empty-state-icon {
+      font-size: 1.8rem;
+    }
+
+    .empty-state-text {
+      h4 {
+        margin: 0 0 4px 0;
+        font-size: 0.95rem;
+        color: #63b3ed;
+      }
+
+      p {
+        margin: 0;
+        font-size: 0.8rem;
+        color: #cbd5e0;
+        line-height: 1.35;
+      }
+    }
+  }
+
+  .locality-loading-badge {
+    position: absolute;
+    top: 75px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(49, 130, 206, 0.95);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+
+    .mini-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      animation: spin 0.6s linear infinite;
     }
+  }
 
-    span {
-      font-size: 0.9rem;
-      font-weight: 500;
-    }
+  .error-overlay {
+    position: absolute;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: rgba(229, 62, 62, 0.95);
+    color: white;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   }
 
   .map-legend {
     position: absolute;
     bottom: 25px;
-    right: 25px;
+    left: 25px;
     z-index: 1000;
     background-color: rgba(26, 32, 44, 0.92);
     color: #edf2f7;
@@ -63,6 +159,11 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      margin-bottom: 4px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
 
       .legend-line {
         display: inline-block;
@@ -72,6 +173,48 @@
 
         &.blue-line {
           background-color: #0055ff;
+        }
+
+        &.purple-line {
+          background-color: #a855f7;
+        }
+      }
+    }
+  }
+
+  ::ng-deep {
+    .road-hover-tooltip {
+      pointer-events: none !important;
+      background: rgba(26, 32, 44, 0.95);
+      color: #edf2f7;
+      border: 1px solid #4a5568;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .road-popup-card {
+      min-width: 170px;
+
+      h4 {
+        margin: 0 0 6px 0;
+        font-size: 0.85rem;
+        color: #2b6cb0;
+      }
+
+      .road-popup-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3px;
+        font-size: 0.75rem;
+
+        .road-popup-label {
+          color: #718096;
+          font-weight: 600;
+        }
+        .road-popup-val {
+          color: #2d3748;
         }
       }
     }

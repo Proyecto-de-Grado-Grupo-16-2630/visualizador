@@ -1,24 +1,49 @@
 <div class="map-wrapper">
-  <!-- Contenedor del lienzo Leaflet -->
   <div id="map-container" class="map-container"></div>
 
-  <!-- Indicador visual de carga -->
-  <div class="loading-overlay" *ngIf="isLoading()">
-    <div class="spinner"></div>
-    <span>Cargando malla vial intermedia (POT Bogotá)...</span>
+  <div class="map-kpi-bar" *ngIf="!errorMessage()">
+    <div class="kpi-card">
+      <span class="kpi-title">Tramos Visibles</span>
+      <span class="kpi-value">{{ mapState.roadCount() | number }}</span>
+    </div>
+    <div class="kpi-divider"></div>
+    <div class="kpi-card">
+      <span class="kpi-title">Sector</span>
+      <span class="kpi-value highlight">{{ mapState.targetLocation()?.name || 'Sin seleccionar' }}</span>
+    </div>
+    <div class="kpi-divider"></div>
+    <div class="kpi-card">
+      <span class="kpi-title">Zoom</span>
+      <span class="kpi-value">{{ mapState.currentZoom() }}</span>
+    </div>
   </div>
 
-  <!-- Mensaje de error si falla la lectura -->
+  <div class="empty-state-card" *ngIf="mapState.selectedLocality() === 'none'">
+    <div class="empty-state-icon">🗺️</div>
+    <div class="empty-state-text">
+      <h4>Visualizador de Accidentalidad Vial</h4>
+      <p>Seleccione una localidad en el panel lateral para cargar su red vial completa o elija Toda Bogotá para componer la ciudad.</p>
+    </div>
+  </div>
+
+  <div class="locality-loading-badge" *ngIf="mapState.isLocalityLoading()">
+    <div class="mini-spinner"></div>
+    <span>{{ mapState.loadingProgressText() }}</span>
+  </div>
+
   <div class="error-overlay" *ngIf="errorMessage()">
     <span>{{ errorMessage() }}</span>
   </div>
 
-  <!-- Leyenda informativa -->
-  <div class="map-legend">
-    <h4>Malla Vial de Bogotá</h4>
+  <div class="map-legend" *ngIf="mapState.roadCount() > 0">
+    <h4>Malla Vial</h4>
     <div class="legend-item">
       <span class="legend-line blue-line"></span>
-      <span>Malla Vial Intermedia (POT)</span>
+      <span>Tramos Viales Activos</span>
+    </div>
+    <div class="legend-item" *ngIf="mapState.activeSearchQuery().length > 0">
+      <span class="legend-line purple-line"></span>
+      <span>Vía Filtrada</span>
     </div>
   </div>
 </div>
