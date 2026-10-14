@@ -3,13 +3,18 @@
 
   <div class="map-kpi-bar" *ngIf="!errorMessage()">
     <div class="kpi-card">
-      <span class="kpi-title">Tramos Visibles</span>
+      <span class="kpi-title">Tramos (DB)</span>
       <span class="kpi-value">{{ mapState.roadCount() | number }}</span>
+    </div>
+    <div class="kpi-divider" *ngIf="mapState.showAccidentPoints()"></div>
+    <div class="kpi-card" *ngIf="mapState.showAccidentPoints()">
+      <span class="kpi-title">Accidentes (DB)</span>
+      <span class="kpi-value danger">{{ mapState.accidentCount() | number }}</span>
     </div>
     <div class="kpi-divider"></div>
     <div class="kpi-card">
       <span class="kpi-title">Sector</span>
-      <span class="kpi-value highlight">{{ mapState.targetLocation()?.name || 'Sin seleccionar' }}</span>
+      <span class="kpi-value highlight">{{ mapState.targetLocation()?.name || 'Toda Bogotá (Puntos)' }}</span>
     </div>
     <div class="kpi-divider"></div>
     <div class="kpi-card">
@@ -18,11 +23,11 @@
     </div>
   </div>
 
-  <div class="empty-state-card" *ngIf="mapState.selectedLocality() === 'none'">
-    <div class="empty-state-icon">🗺️</div>
+  <div class="empty-state-card" *ngIf="mapState.selectedLocality() === 'none' && !mapState.showAccidentPoints()">
+    <div class="empty-state-icon">🗄️</div>
     <div class="empty-state-text">
-      <h4>Visualizador de Accidentalidad Vial</h4>
-      <p>Seleccione una localidad en el panel lateral para cargar su red vial completa o elija Toda Bogotá para componer la ciudad.</p>
+      <h4>Motor SpatiaLite Conectado</h4>
+      <p>Seleccione una localidad en el panel lateral para consultar la tabla calles_bogota o active la tabla puntos_accidentes.</p>
     </div>
   </div>
 
@@ -35,15 +40,23 @@
     <span>{{ errorMessage() }}</span>
   </div>
 
-  <div class="map-legend" *ngIf="mapState.roadCount() > 0">
-    <h4>Malla Vial</h4>
-    <div class="legend-item">
+  <div class="map-legend" *ngIf="mapState.roadCount() > 0 || mapState.showAccidentPoints()">
+    <h4>Tablas SpatiaLite (.db)</h4>
+    <div class="legend-item" *ngIf="mapState.roadCount() > 0">
       <span class="legend-line blue-line"></span>
-      <span>Tramos Viales Activos</span>
+      <span>calles_bogota (LINESTRING)</span>
     </div>
     <div class="legend-item" *ngIf="mapState.activeSearchQuery().length > 0">
       <span class="legend-line purple-line"></span>
       <span>Vía Filtrada</span>
+    </div>
+    <div class="legend-item" *ngIf="mapState.showAccidentPoints()">
+      <span class="legend-dot red-dot"></span>
+      <span>Con Heridos / Muertos (POINT)</span>
+    </div>
+    <div class="legend-item" *ngIf="mapState.showAccidentPoints()">
+      <span class="legend-dot orange-dot"></span>
+      <span>Solo Daños (POINT)</span>
     </div>
   </div>
 </div>

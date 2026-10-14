@@ -39,3 +39,4 @@ Thumbs.db
 # Mapas de prueba temporales generados por scripts
 mapa_*.html
 verificacion_mapa.html
+*.sql

@@ -2,9 +2,9 @@
   <div class="sidebar-header">
     <div class="title-group">
       <h2>Visualizador Vial</h2>
-      <span class="badge">Bogotá D.C.</span>
+      <span class="badge">SpatiaLite DB</span>
     </div>
-    <p class="subtitle">Análisis geoespacial de red vial y movilidad</p>
+    <p class="subtitle">Lectura directa desde tablas SQL (POINT & LINESTRING)</p>
   </div>
 
   <div class="sidebar-content">
@@ -15,7 +15,7 @@
       </div>
       
       <div class="field-group">
-        <label for="locality-select">Localidad de Bogotá:</label>
+        <label for="locality-select">Localidad (Tabla calles_bogota):</label>
         <div class="select-wrapper">
           <select id="locality-select" (change)="onLocalityChange($event)" [value]="mapState.selectedLocality()">
             <option value="none">Seleccionar localidad...</option>
@@ -79,10 +79,32 @@
       </div>
     </section>
 
+    <section class="control-card">
+      <div class="section-title">
+        <span class="icon">🚨</span>
+        <h3>Siniestralidad (puntos_accidentes)</h3>
+      </div>
+
+      <div class="hierarchy-list">
+        <label class="hierarchy-item">
+          <input
+            type="checkbox"
+            [checked]="mapState.showAccidentPoints()"
+            (change)="onToggleAccidents()"
+          />
+          <span class="custom-check"></span>
+          <div class="hierarchy-meta">
+            <span class="hierarchy-name">Mostrar Puntos de Accidentes</span>
+            <span class="hierarchy-desc">Geometrías POINT (SRID 4326) desde .db</span>
+          </div>
+        </label>
+      </div>
+    </section>
+
     <section class="control-card" *ngIf="mapState.selectedLocality() !== 'none'">
       <div class="section-title">
         <span class="icon">🛣️</span>
-        <h3>Jerarquía Vial</h3>
+        <h3>Jerarquía Vial (LINESTRING)</h3>
       </div>
       
       <div class="hierarchy-list">

@@ -37,6 +37,10 @@ export class SidebarFiltersComponent {
     this.mapState.toggleRoadType(typeKey);
   }
 
+  public onToggleAccidents(): void {
+    this.mapState.toggleAccidentPoints();
+  }
+
   public resetFilters(): void {
     this.searchQueryText = '';
     this.mapState.setLocality('none');
