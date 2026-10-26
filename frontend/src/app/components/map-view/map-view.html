@@ -3,36 +3,25 @@
 
   <div class="map-kpi-bar" *ngIf="!errorMessage()">
     <div class="kpi-card">
+      <span class="kpi-title">Vista Activa</span>
+      <span class="kpi-value highlight">{{ mapState.visualizationMode() === 'points' ? 'Puntos' : mapState.visualizationMode() === 'heatmap' ? 'Mapa de Calor' : 'Coropletas UPZ' }}</span>
+    </div>
+    <div class="kpi-divider" *ngIf="mapState.showRoadNetwork()"></div>
+    <div class="kpi-card" *ngIf="mapState.showRoadNetwork()">
       <span class="kpi-title">Tramos Viales</span>
       <span class="kpi-value">{{ mapState.roadCount() | number }}</span>
     </div>
     <div class="kpi-divider" *ngIf="mapState.showAccidentPoints()"></div>
     <div class="kpi-card" *ngIf="mapState.showAccidentPoints()">
-      <span class="kpi-title">Accidentes</span>
+      <span class="kpi-title">Siniestros</span>
       <span class="kpi-value danger">{{ mapState.accidentCount() | number }}</span>
-    </div>
-    <div class="kpi-divider"></div>
-    <div class="kpi-card">
-      <span class="kpi-title">Año</span>
-      <span class="kpi-value">{{ mapState.selectedYear() === 'all' ? 'Todos' : mapState.selectedYear() }}</span>
-    </div>
-    <div class="kpi-divider"></div>
-    <div class="kpi-card">
-      <span class="kpi-title">Sector</span>
-      <span class="kpi-value highlight">{{ mapState.targetLocation()?.name || 'Toda Bogotá' }}</span>
-    </div>
-    <div class="kpi-divider"></div>
-    <div class="kpi-card">
-      <span class="kpi-title">Zoom</span>
-      <span class="kpi-value">{{ mapState.currentZoom() }}</span>
     </div>
   </div>
 
-  <div class="empty-state-card" *ngIf="mapState.selectedLocality() === 'none' && !mapState.showAccidentPoints()">
-    <div class="empty-state-icon">🗺️</div>
+  <div class="empty-state-card" *ngIf="mapState.selectedUpz() === 'all' && !mapState.showAccidentPoints() && !mapState.showRoadNetwork()">
     <div class="empty-state-text">
-      <h4>Visualizador Conectado al Backend</h4>
-      <p>Seleccione una localidad en el panel lateral para cargar la malla vial o active la capa de puntos de accidentes.</p>
+      <h4>Visualizador de Accidentalidad Vial</h4>
+      <p>Active la capa de siniestros o la malla vial en el panel lateral para explorar los datos.</p>
     </div>
   </div>
 
@@ -45,58 +34,52 @@
     <span>{{ errorMessage() }}</span>
   </div>
 
-  <div class="map-legend" *ngIf="mapState.roadCount() > 0 || mapState.showAccidentPoints()">
+  <div class="map-legend" *ngIf="(mapState.showRoadNetwork() && mapState.roadCount() > 0) || mapState.showAccidentPoints()">
     <div class="legend-header" (click)="toggleLegend()">
-      <h4>Leyenda del Mapa</h4>
-      <button type="button" class="legend-toggle-btn">
-        {{ isLegendCollapsed() ? '▲' : '▼' }}
-      </button>
+      <h4>Leyenda Cartográfica</h4>
+      <button type="button" class="legend-toggle-btn">{{ isLegendCollapsed() ? '▲' : '▼' }}</button>
     </div>
 
     <div class="legend-body" *ngIf="!isLegendCollapsed()">
-      <div class="legend-group" *ngIf="mapState.showAccidentPoints()">
-        <span class="legend-subtitle">Gravedad de Siniestros (POINT)</span>
-        <div class="legend-item">
-          <span class="legend-dot fatal-dot"></span>
-          <span>Con Muertos (Gravedad 1)</span>
-        </div>
-        <div class="legend-item">
-          <span class="legend-dot injury-dot"></span>
-          <span>Con Heridos (Gravedad 2)</span>
-        </div>
-        <div class="legend-item">
-          <span class="legend-dot damage-dot"></span>
-          <span>Solo Daños (Gravedad 3)</span>
+      
+      <!-- LEYENDA VISTA 1: PUNTOS -->
+      <div class="legend-group" *ngIf="mapState.showAccidentPoints() && mapState.visualizationMode() === 'points'">
+        <span class="legend-subtitle">Siniestros (Gravedad)</span>
+        <div class="legend-item"><span class="legend-dot fatal-dot"></span><span>Con Muertos (Grav. 1)</span></div>
+        <div class="legend-item"><span class="legend-dot injury-dot"></span><span>Con Heridos (Grav. 2)</span></div>
+        <div class="legend-item"><span class="legend-dot damage-dot"></span><span>Solo Daños (Grav. 3)</span></div>
+      </div>
+
+      <!-- LEYENDA VISTA 2: MAPA DE CALOR -->
+      <div class="legend-group" *ngIf="mapState.showAccidentPoints() && mapState.visualizationMode() === 'heatmap'">
+        <span class="legend-subtitle">Densidad Térmica</span>
+        <div class="heat-gradient-bar"></div>
+        <div class="heat-labels">
+          <span>Baja</span><span>Media</span><span>Crítica</span>
         </div>
       </div>
 
-      <div class="legend-group" *ngIf="mapState.roadCount() > 0">
-        <span class="legend-subtitle">Jerarquía Vial (LINESTRING)</span>
-        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['primary']">
-          <span class="legend-line primary-line"></span>
-          <span>Arterial / Troncal</span>
-        </div>
-        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['secondary']">
-          <span class="legend-line secondary-line"></span>
-          <span>Vía Secundaria</span>
-        </div>
-        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['tertiary']">
-          <span class="legend-line tertiary-line"></span>
-          <span>Vía Colectora</span>
-        </div>
-        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['residential']">
-          <span class="legend-line residential-line"></span>
-          <span>Vía Residencial</span>
-        </div>
-        <div class="legend-item" *ngIf="mapState.activeSearchQuery().length > 0">
-          <span class="legend-line purple-line"></span>
-          <span>Vía Buscada ({{ mapState.activeSearchQuery() }})</span>
-        </div>
-        <div class="legend-item">
-          <span class="legend-line cyan-line"></span>
-          <span>Resaltado al pasar cursor</span>
-        </div>
+      <!-- LEYENDA VISTA 3: COROPLETAS -->
+      <div class="legend-group" *ngIf="mapState.showAccidentPoints() && mapState.visualizationMode() === 'choropleth'">
+        <span class="legend-subtitle">Siniestros por UPZ</span>
+        <div class="legend-item"><span class="legend-box" style="background:#7F1D1D"></span><span>> 200 siniestros</span></div>
+        <div class="legend-item"><span class="legend-box" style="background:#B91C1C"></span><span>141 – 200</span></div>
+        <div class="legend-item"><span class="legend-box" style="background:#EF4444"></span><span>91 – 140</span></div>
+        <div class="legend-item"><span class="legend-box" style="background:#F97316"></span><span>51 – 90</span></div>
+        <div class="legend-item"><span class="legend-box" style="background:#F59E0B"></span><span>21 – 50</span></div>
+        <div class="legend-item"><span class="legend-box" style="background:#FCD34D"></span><span>6 – 20</span></div>
+        <div class="legend-item"><span class="legend-box" style="background:#FEF08A"></span><span>0 – 5</span></div>
       </div>
+
+      <!-- LEYENDA MALLA VIAL -->
+      <div class="legend-group" *ngIf="mapState.showRoadNetwork() && mapState.roadCount() > 0">
+        <span class="legend-subtitle">Jerarquía Vial</span>
+        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['primary']"><span class="legend-line primary-line"></span><span>Arterial / Troncal</span></div>
+        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['secondary']"><span class="legend-line secondary-line"></span><span>Vía Secundaria</span></div>
+        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['tertiary']"><span class="legend-line tertiary-line"></span><span>Vía Colectora</span></div>
+        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['residential']"><span class="legend-line residential-line"></span><span>Vía Residencial</span></div>
+      </div>
+
     </div>
   </div>
 </div>

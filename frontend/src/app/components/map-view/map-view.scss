@@ -273,4 +273,30 @@
   to {
     transform: rotate(360deg);
   }
+}.heat-gradient-bar { height: 10px; width: 100%; border-radius: 5px; background: linear-gradient(90deg, #3B82F6 0%, #10B981 35%, #F59E0B 65%, #EF4444 85%, #7F1D1D 100%); margin: 4px 0; }
+.legend-box { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(255, 255, 255, 0.25); }
+/* ==== ESTILOS SEGUROS PARA LA LEYENDA ==== */
+.legend-dot {
+  display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+  &.fatal-dot { background-color: #991B1B; border: 1.5px solid #450A0A; }
+  &.injury-dot { background-color: #EF4444; border: 1.5px solid #991B1B; }
+  &.damage-dot { background-color: #F59E0B; border: 1.5px solid #B45309; }
+}
+.legend-line {
+  display: inline-block; width: 22px; height: 4px; border-radius: 2px;
+  &.primary-line { background-color: #1D4ED8; height: 5px; }
+  &.secondary-line { background-color: #0284C7; }
+  &.tertiary-line { background-color: #38BDF8; }
+  &.residential-line { background-color: #60A5FA; height: 2.5px; }
+  &.purple-line { background-color: #A855F7; height: 5px; }
+}
+.heat-gradient-bar { 
+  height: 10px; width: 100%; border-radius: 5px; margin: 6px 0 2px 0;
+  background: linear-gradient(90deg, #3B82F6 0%, #10B981 35%, #F59E0B 65%, #EF4444 85%, #7F1D1D 100%); 
+}
+.heat-labels {
+  display: flex; justify-content: space-between; font-size: 0.68rem; color: #cbd5e1;
+}
+.legend-box {
+  display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(255, 255, 255, 0.25);
 }

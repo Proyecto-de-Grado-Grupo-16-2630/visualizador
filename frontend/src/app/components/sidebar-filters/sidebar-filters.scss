@@ -276,3 +276,14 @@
     }
   }
 }
+.mode-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  .mode-btn {
+    background: #1f2937; color: #cbd5e1; border: 1px solid #374151; padding: 8px 4px; border-radius: 6px; cursor: pointer; font-size: 0.75rem;
+    &:hover:not(:disabled) { background: #374151; }
+    &.active { background: #3b82f6; color: white; border-color: #60a5fa; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+}

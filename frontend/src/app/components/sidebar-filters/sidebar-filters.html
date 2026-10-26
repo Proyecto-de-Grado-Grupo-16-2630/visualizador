@@ -1,183 +1,126 @@
 <aside class="sidebar">
   <div class="sidebar-header">
     <div class="title-group">
-      <h2>Visualizador Vial</h2>
+      <h2>Visualizador Geoespacial</h2>
       <span class="badge">Spring Boot + SpatiaLite</span>
     </div>
-    <p class="subtitle">Análisis geoespacial de siniestralidad en Bogotá D.C.</p>
+    <p class="subtitle">Análisis de siniestralidad en Bogotá D.C.</p>
   </div>
 
   <div class="sidebar-content">
     <section class="control-card">
       <div class="section-title">
-        <span class="icon">📍</span>
+        <h3>Modo de Visualización</h3>
+      </div>
+      <div class="mode-selector-grid">
+        <button type="button" class="mode-btn" [class.active]="mapState.visualizationMode() === 'points'" (click)="onSelectMode('points')">
+          <span class="mode-label">Puntos de Evento</span>
+        </button>
+        <button type="button" class="mode-btn" [class.active]="mapState.visualizationMode() === 'heatmap'" (click)="onSelectMode('heatmap')">
+          <span class="mode-label">Mapa de Calor</span>
+        </button>
+        <button type="button" class="mode-btn" [class.active]="mapState.visualizationMode() === 'choropleth'" (click)="onSelectMode('choropleth')">
+          <span class="mode-label">Coropletas UPZ</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="control-card">
+      <div class="section-title">
         <h3>Sectorización Espacial</h3>
       </div>
-
       <div class="field-group">
-        <label for="locality-select">Localidad:</label>
+        <label for="upz-select">Unidad de Planeamiento (UPZ / UPL):</label>
         <div class="select-wrapper">
-          <select id="locality-select" (change)="onLocalityChange($event)" [value]="mapState.selectedLocality()">
-            <option value="none">Seleccionar localidad...</option>
-            <option value="all_city">Toda Bogotá (Todas las localidades)</option>
-            <option value="usaquen">1. Usaquén</option>
-            <option value="chapinero">2. Chapinero</option>
-            <option value="santafe">3. Santa Fe</option>
-            <option value="sancristobal">4. San Cristóbal</option>
-            <option value="usme">5. Usme</option>
-            <option value="tunjuelito">6. Tunjuelito</option>
-            <option value="bosa">7. Bosa</option>
-            <option value="kennedy">8. Kennedy</option>
-            <option value="fontibon">9. Fontibón</option>
-            <option value="engativa">10. Engativá</option>
-            <option value="suba">11. Suba</option>
-            <option value="barriosunidos">12. Barrios Unidos</option>
-            <option value="teusaquillo">13. Teusaquillo</option>
-            <option value="losmartires">14. Los Mártires</option>
-            <option value="antonionarino">15. Antonio Nariño</option>
-            <option value="puentearanda">16. Puente Aranda</option>
-            <option value="lacandelaria">17. La Candelaria</option>
-            <option value="rafaeluribe">18. Rafael Uribe Uribe</option>
-            <option value="ciudadbolivar">19. Ciudad Bolívar</option>
-            <option value="sumapaz">20. Sumapaz</option>
+          <select id="upz-select" (change)="onUpzChange($event)" [value]="mapState.selectedUpz()">
+            <option value="all">Toda Bogotá D.C. (General)</option>
+            <option *ngFor="let u of mapState.availableUpzList()" [value]="u.codigo">
+              {{ u.nombre }} (UPZ-{{ u.codigo }})
+            </option>
           </select>
         </div>
       </div>
+      
+      <div class="hierarchy-list" style="margin-top: 8px;">
+        <label class="hierarchy-item">
+          <input type="checkbox" [checked]="mapState.showRoadNetwork()" (change)="onToggleRoadNetwork()" />
+          <span class="custom-check"></span>
+          <div class="hierarchy-meta">
+            <span class="hierarchy-name">Mostrar Malla Vial (Calles)</span>
+          </div>
+        </label>
+      </div>
 
-      <div class="field-group" *ngIf="mapState.selectedLocality() !== 'none'">
-        <label for="road-search">Buscar vía en el sector:</label>
+      <div class="field-group" *ngIf="mapState.showRoadNetwork() && mapState.roadCount() > 0" style="margin-top: 10px;">
+        <label for="road-search">Buscar vía por nombre:</label>
         <div class="search-box">
-          <input
-            id="road-search"
-            type="text"
-            placeholder="Ej: Carrera 7, Calle 127..."
-            [(ngModel)]="searchQueryText"
-            (keyup.enter)="onSearch()"
-          />
-          <button type="button" class="btn-search-action" (click)="onSearch()">
-            Buscar
-          </button>
+          <input id="road-search" type="text" placeholder="Ej: Carrera 7..." [(ngModel)]="searchQueryText" (keyup.enter)="onSearch()" />
+          <button type="button" class="btn-search-action" (click)="onSearch()">Buscar</button>
         </div>
-
         <div class="search-actions-row" *ngIf="mapState.activeSearchQuery().length > 0">
           <label class="isolate-label">
-            <input
-              type="checkbox"
-              [checked]="mapState.isolateSearchedRoad()"
-              (change)="onToggleIsolate()"
-            />
-            Ocultar las demás vías
+            <input type="checkbox" [checked]="mapState.isolateSearchedRoad()" (change)="onToggleIsolate()" />
+            Ocultar las demás
           </label>
-          <button type="button" class="btn-clear-search" (click)="onClearSearch()">
-            ✕ Quitar
-          </button>
+          <button type="button" class="btn-clear-search" (click)="onClearSearch()">✕ Quitar</button>
         </div>
       </div>
     </section>
 
     <section class="control-card">
       <div class="section-title">
-        <span class="icon">📅</span>
-        <h3>Filtros Temporales y Siniestros</h3>
+        <h3>Filtros Temporales</h3>
       </div>
-
       <div class="field-group">
         <label for="year-select">Año de ocurrencia:</label>
         <div class="select-wrapper">
           <select id="year-select" (change)="onYearChange($event)" [value]="mapState.selectedYear()">
             <option value="all">Todos los registros disponibles</option>
-            <option *ngFor="let anio of mapState.availableYears()" [value]="anio">
-              Año {{ anio }}
-            </option>
+            <option *ngFor="let anio of mapState.availableYears()" [value]="anio">Año {{ anio }}</option>
           </select>
         </div>
       </div>
-
       <div class="hierarchy-list">
         <label class="hierarchy-item">
-          <input
-            type="checkbox"
-            [checked]="mapState.showAccidentPoints()"
-            (change)="onToggleAccidents()"
-          />
+          <input type="checkbox" [checked]="mapState.showAccidentPoints()" (change)="onToggleAccidents()" />
           <span class="custom-check"></span>
           <div class="hierarchy-meta">
-            <span class="hierarchy-name">Mostrar Puntos de Accidentes</span>
-            <span class="hierarchy-desc">{{ mapState.accidentCount() | number }} siniestros cargados desde API</span>
+            <span class="hierarchy-name">Mostrar Capa de Siniestralidad</span>
           </div>
         </label>
       </div>
     </section>
 
-    <section class="control-card" *ngIf="mapState.selectedLocality() !== 'none'">
+    <section class="control-card" *ngIf="mapState.selectedUpz() !== 'all' && mapState.showRoadNetwork()">
       <div class="section-title">
-        <span class="icon">🛣️</span>
-        <h3>Jerarquía Vial</h3>
+        <h3>Jerarquía Vial de la UPZ</h3>
       </div>
-
       <div class="hierarchy-list">
         <label class="hierarchy-item">
-          <input
-            type="checkbox"
-            [checked]="mapState.selectedRoadTypes()['primary']"
-            (change)="onToggleType('primary')"
-          />
+          <input type="checkbox" [checked]="mapState.selectedRoadTypes()['primary']" (change)="onToggleType('primary')" />
           <span class="custom-check"></span>
-          <div class="hierarchy-meta">
-            <span class="hierarchy-name">Vías Arteriales y Troncales</span>
-            <span class="hierarchy-desc">Autopistas y avenidas principales</span>
-          </div>
+          <div class="hierarchy-meta"><span class="hierarchy-name">Arteriales / Troncales</span></div>
         </label>
-
         <label class="hierarchy-item">
-          <input
-            type="checkbox"
-            [checked]="mapState.selectedRoadTypes()['secondary']"
-            (change)="onToggleType('secondary')"
-          />
+          <input type="checkbox" [checked]="mapState.selectedRoadTypes()['secondary']" (change)="onToggleType('secondary')" />
           <span class="custom-check"></span>
-          <div class="hierarchy-meta">
-            <span class="hierarchy-name">Vías Secundarias</span>
-            <span class="hierarchy-desc">Conexión interbarrial continua</span>
-          </div>
+          <div class="hierarchy-meta"><span class="hierarchy-name">Vías Secundarias</span></div>
         </label>
-
         <label class="hierarchy-item">
-          <input
-            type="checkbox"
-            [checked]="mapState.selectedRoadTypes()['tertiary']"
-            (change)="onToggleType('tertiary')"
-          />
+          <input type="checkbox" [checked]="mapState.selectedRoadTypes()['tertiary']" (change)="onToggleType('tertiary')" />
           <span class="custom-check"></span>
-          <div class="hierarchy-meta">
-            <span class="hierarchy-name">Vías Colectoras</span>
-            <span class="hierarchy-desc">Distribución zonal intermedia</span>
-          </div>
+          <div class="hierarchy-meta"><span class="hierarchy-name">Vías Colectoras</span></div>
         </label>
-
         <label class="hierarchy-item">
-          <input
-            type="checkbox"
-            [checked]="mapState.selectedRoadTypes()['residential']"
-            (change)="onToggleType('residential')"
-          />
+          <input type="checkbox" [checked]="mapState.selectedRoadTypes()['residential']" (change)="onToggleType('residential')" />
           <span class="custom-check"></span>
-          <div class="hierarchy-meta">
-            <span class="hierarchy-name">Vías Residenciales</span>
-            <span class="hierarchy-desc">Acceso local y barrial</span>
-          </div>
+          <div class="hierarchy-meta"><span class="hierarchy-name">Vías Residenciales</span></div>
         </label>
       </div>
     </section>
   </div>
 
   <div class="sidebar-footer">
-    <button
-      class="btn-reset"
-      (click)="resetFilters()"
-      [disabled]="mapState.selectedLocality() === 'none' && mapState.selectedYear() === 'all'"
-    >
-      Restablecer Vista General
-    </button>
+    <button class="btn-reset" (click)="resetFilters()">Restablecer Vista General</button>
   </div>
 </aside>
