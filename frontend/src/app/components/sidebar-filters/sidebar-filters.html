@@ -85,7 +85,7 @@
         <label for="year-select">Año de ocurrencia:</label>
         <div class="select-wrapper">
           <select id="year-select" (change)="onYearChange($event)" [value]="mapState.selectedYear()">
-            <option value="all">Todos los años ({{ mapState.availableYears().join(', ') || 'Histórico' }})</option>
+            <option value="all">Todos los registros disponibles</option>
             <option *ngFor="let anio of mapState.availableYears()" [value]="anio">
               Año {{ anio }}
             </option>

@@ -14,17 +14,19 @@
   .map-kpi-bar {
     position: absolute;
     top: 16px;
-    left: 16px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 1000;
-    background: rgba(15, 23, 42, 0.9);
+    background: rgba(15, 23, 42, 0.92);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 10px;
-    padding: 10px 18px;
+    padding: 10px 20px;
     display: flex;
     align-items: center;
-    gap: 16px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    gap: 18px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    white-space: nowrap;
 
     .kpi-card {
       display: flex;
@@ -56,7 +58,7 @@
     .kpi-divider {
       width: 1px;
       height: 26px;
-      background: rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.14);
     }
   }
 
@@ -100,12 +102,13 @@
   .locality-loading-badge {
     position: absolute;
     top: 78px;
-    left: 16px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 1000;
     background: rgba(15, 23, 42, 0.92);
     color: #38bdf8;
     border: 1px solid rgba(56, 189, 248, 0.35);
-    padding: 8px 14px;
+    padding: 8px 16px;
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -127,7 +130,8 @@
   .error-overlay {
     position: absolute;
     top: 80px;
-    left: 16px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 1000;
     background: rgba(127, 29, 29, 0.95);
     border: 1px solid #ef4444;
@@ -141,7 +145,7 @@
   .map-legend {
     position: absolute;
     bottom: 28px;
-    left: 16px;
+    right: 60px;
     z-index: 1000;
     background: rgba(15, 23, 42, 0.92);
     backdrop-filter: blur(10px);
