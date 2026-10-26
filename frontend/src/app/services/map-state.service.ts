@@ -13,6 +13,8 @@ export interface LocalityCoord {
 export class MapStateService {
   public selectedLocality = signal<string>('none');
   public targetLocation = signal<LocalityCoord | null>(null);
+  public selectedYear = signal<string>('all');
+  public availableYears = signal<string[]>([]);
   public roadCount = signal<number>(0);
   public accidentCount = signal<number>(0);
   public currentZoom = signal<number>(12);
@@ -63,6 +65,10 @@ export class MapStateService {
     } else if (this.localities[key]) {
       this.targetLocation.set(this.localities[key]);
     }
+  }
+
+  public setYear(year: string): void {
+    this.selectedYear.set(year);
   }
 
   public toggleRoadType(type: string): void {

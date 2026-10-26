@@ -3,18 +3,23 @@
 
   <div class="map-kpi-bar" *ngIf="!errorMessage()">
     <div class="kpi-card">
-      <span class="kpi-title">Tramos (DB)</span>
+      <span class="kpi-title">Tramos Viales</span>
       <span class="kpi-value">{{ mapState.roadCount() | number }}</span>
     </div>
     <div class="kpi-divider" *ngIf="mapState.showAccidentPoints()"></div>
     <div class="kpi-card" *ngIf="mapState.showAccidentPoints()">
-      <span class="kpi-title">Accidentes (DB)</span>
+      <span class="kpi-title">Accidentes</span>
       <span class="kpi-value danger">{{ mapState.accidentCount() | number }}</span>
     </div>
     <div class="kpi-divider"></div>
     <div class="kpi-card">
+      <span class="kpi-title">Año</span>
+      <span class="kpi-value">{{ mapState.selectedYear() === 'all' ? 'Todos' : mapState.selectedYear() }}</span>
+    </div>
+    <div class="kpi-divider"></div>
+    <div class="kpi-card">
       <span class="kpi-title">Sector</span>
-      <span class="kpi-value highlight">{{ mapState.targetLocation()?.name || 'Toda Bogotá (Puntos)' }}</span>
+      <span class="kpi-value highlight">{{ mapState.targetLocation()?.name || 'Toda Bogotá' }}</span>
     </div>
     <div class="kpi-divider"></div>
     <div class="kpi-card">
@@ -24,10 +29,10 @@
   </div>
 
   <div class="empty-state-card" *ngIf="mapState.selectedLocality() === 'none' && !mapState.showAccidentPoints()">
-    <div class="empty-state-icon">🗄️</div>
+    <div class="empty-state-icon">🗺️</div>
     <div class="empty-state-text">
-      <h4>Motor SpatiaLite Conectado</h4>
-      <p>Seleccione una localidad en el panel lateral para consultar la tabla calles_bogota o active la tabla puntos_accidentes.</p>
+      <h4>Visualizador Conectado al Backend</h4>
+      <p>Seleccione una localidad en el panel lateral para cargar la malla vial o active la capa de puntos de accidentes.</p>
     </div>
   </div>
 
@@ -41,22 +46,57 @@
   </div>
 
   <div class="map-legend" *ngIf="mapState.roadCount() > 0 || mapState.showAccidentPoints()">
-    <h4>Tablas SpatiaLite (.db)</h4>
-    <div class="legend-item" *ngIf="mapState.roadCount() > 0">
-      <span class="legend-line blue-line"></span>
-      <span>calles_bogota (LINESTRING)</span>
+    <div class="legend-header" (click)="toggleLegend()">
+      <h4>Leyenda del Mapa</h4>
+      <button type="button" class="legend-toggle-btn">
+        {{ isLegendCollapsed() ? '▲' : '▼' }}
+      </button>
     </div>
-    <div class="legend-item" *ngIf="mapState.activeSearchQuery().length > 0">
-      <span class="legend-line purple-line"></span>
-      <span>Vía Filtrada</span>
-    </div>
-    <div class="legend-item" *ngIf="mapState.showAccidentPoints()">
-      <span class="legend-dot red-dot"></span>
-      <span>Con Heridos / Muertos (POINT)</span>
-    </div>
-    <div class="legend-item" *ngIf="mapState.showAccidentPoints()">
-      <span class="legend-dot orange-dot"></span>
-      <span>Solo Daños (POINT)</span>
+
+    <div class="legend-body" *ngIf="!isLegendCollapsed()">
+      <div class="legend-group" *ngIf="mapState.showAccidentPoints()">
+        <span class="legend-subtitle">Gravedad de Siniestros (POINT)</span>
+        <div class="legend-item">
+          <span class="legend-dot fatal-dot"></span>
+          <span>Con Muertos (Gravedad 1)</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot injury-dot"></span>
+          <span>Con Heridos (Gravedad 2)</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot damage-dot"></span>
+          <span>Solo Daños (Gravedad 3)</span>
+        </div>
+      </div>
+
+      <div class="legend-group" *ngIf="mapState.roadCount() > 0">
+        <span class="legend-subtitle">Jerarquía Vial (LINESTRING)</span>
+        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['primary']">
+          <span class="legend-line primary-line"></span>
+          <span>Arterial / Troncal</span>
+        </div>
+        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['secondary']">
+          <span class="legend-line secondary-line"></span>
+          <span>Vía Secundaria</span>
+        </div>
+        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['tertiary']">
+          <span class="legend-line tertiary-line"></span>
+          <span>Vía Colectora</span>
+        </div>
+        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['residential']">
+          <span class="legend-line residential-line"></span>
+          <span>Vía Residencial</span>
+        </div>
+        <div class="legend-item" *ngIf="mapState.activeSearchQuery().length > 0">
+          <span class="legend-line purple-line"></span>
+          <span>Vía Buscada ({{ mapState.activeSearchQuery() }})</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-line cyan-line"></span>
+          <span>Resaltado al pasar cursor</span>
+        </div>
+      </div>
     </div>
   </div>
 </div>

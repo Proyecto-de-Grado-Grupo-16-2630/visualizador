@@ -2,9 +2,9 @@
   <div class="sidebar-header">
     <div class="title-group">
       <h2>Visualizador Vial</h2>
-      <span class="badge">SpatiaLite DB</span>
+      <span class="badge">Spring Boot + SpatiaLite</span>
     </div>
-    <p class="subtitle">Lectura directa desde tablas SQL (POINT & LINESTRING)</p>
+    <p class="subtitle">Análisis geoespacial de siniestralidad en Bogotá D.C.</p>
   </div>
 
   <div class="sidebar-content">
@@ -13,33 +13,33 @@
         <span class="icon">📍</span>
         <h3>Sectorización Espacial</h3>
       </div>
-      
+
       <div class="field-group">
-        <label for="locality-select">Localidad (Tabla calles_bogota):</label>
+        <label for="locality-select">Localidad:</label>
         <div class="select-wrapper">
           <select id="locality-select" (change)="onLocalityChange($event)" [value]="mapState.selectedLocality()">
             <option value="none">Seleccionar localidad...</option>
             <option value="all_city">Toda Bogotá (Todas las localidades)</option>
-            <option value="usaquen">Usaquén</option>
-            <option value="chapinero">Chapinero</option>
-            <option value="santafe">Santa Fe</option>
-            <option value="sancristobal">San Cristóbal</option>
-            <option value="usme">Usme</option>
-            <option value="tunjuelito">Tunjuelito</option>
-            <option value="bosa">Bosa</option>
-            <option value="kennedy">Kennedy</option>
-            <option value="fontibon">Fontibón</option>
-            <option value="engativa">Engativá</option>
-            <option value="suba">Suba</option>
-            <option value="barriosunidos">Barrios Unidos</option>
-            <option value="teusaquillo">Teusaquillo</option>
-            <option value="losmartires">Los Mártires</option>
-            <option value="antonionarino">Antonio Nariño</option>
-            <option value="puentearanda">Puente Aranda</option>
-            <option value="lacandelaria">La Candelaria</option>
-            <option value="rafaeluribe">Rafael Uribe Uribe</option>
-            <option value="ciudadbolivar">Ciudad Bolívar</option>
-            <option value="sumapaz">Sumapaz</option>
+            <option value="usaquen">1. Usaquén</option>
+            <option value="chapinero">2. Chapinero</option>
+            <option value="santafe">3. Santa Fe</option>
+            <option value="sancristobal">4. San Cristóbal</option>
+            <option value="usme">5. Usme</option>
+            <option value="tunjuelito">6. Tunjuelito</option>
+            <option value="bosa">7. Bosa</option>
+            <option value="kennedy">8. Kennedy</option>
+            <option value="fontibon">9. Fontibón</option>
+            <option value="engativa">10. Engativá</option>
+            <option value="suba">11. Suba</option>
+            <option value="barriosunidos">12. Barrios Unidos</option>
+            <option value="teusaquillo">13. Teusaquillo</option>
+            <option value="losmartires">14. Los Mártires</option>
+            <option value="antonionarino">15. Antonio Nariño</option>
+            <option value="puentearanda">16. Puente Aranda</option>
+            <option value="lacandelaria">17. La Candelaria</option>
+            <option value="rafaeluribe">18. Rafael Uribe Uribe</option>
+            <option value="ciudadbolivar">19. Ciudad Bolívar</option>
+            <option value="sumapaz">20. Sumapaz</option>
           </select>
         </div>
       </div>
@@ -50,7 +50,7 @@
           <input
             id="road-search"
             type="text"
-            placeholder="Ej: Carrera 7, Calle 26..."
+            placeholder="Ej: Carrera 7, Calle 127..."
             [(ngModel)]="searchQueryText"
             (keyup.enter)="onSearch()"
           />
@@ -68,11 +68,7 @@
             />
             Ocultar las demás vías
           </label>
-          <button
-            type="button"
-            class="btn-clear-search"
-            (click)="onClearSearch()"
-          >
+          <button type="button" class="btn-clear-search" (click)="onClearSearch()">
             ✕ Quitar
           </button>
         </div>
@@ -81,8 +77,20 @@
 
     <section class="control-card">
       <div class="section-title">
-        <span class="icon">🚨</span>
-        <h3>Siniestralidad (puntos_accidentes)</h3>
+        <span class="icon">📅</span>
+        <h3>Filtros Temporales y Siniestros</h3>
+      </div>
+
+      <div class="field-group">
+        <label for="year-select">Año de ocurrencia:</label>
+        <div class="select-wrapper">
+          <select id="year-select" (change)="onYearChange($event)" [value]="mapState.selectedYear()">
+            <option value="all">Todos los años ({{ mapState.availableYears().join(', ') || 'Histórico' }})</option>
+            <option *ngFor="let anio of mapState.availableYears()" [value]="anio">
+              Año {{ anio }}
+            </option>
+          </select>
+        </div>
       </div>
 
       <div class="hierarchy-list">
@@ -95,7 +103,7 @@
           <span class="custom-check"></span>
           <div class="hierarchy-meta">
             <span class="hierarchy-name">Mostrar Puntos de Accidentes</span>
-            <span class="hierarchy-desc">Geometrías POINT (SRID 4326) desde .db</span>
+            <span class="hierarchy-desc">{{ mapState.accidentCount() | number }} siniestros cargados desde API</span>
           </div>
         </label>
       </div>
@@ -104,9 +112,9 @@
     <section class="control-card" *ngIf="mapState.selectedLocality() !== 'none'">
       <div class="section-title">
         <span class="icon">🛣️</span>
-        <h3>Jerarquía Vial (LINESTRING)</h3>
+        <h3>Jerarquía Vial</h3>
       </div>
-      
+
       <div class="hierarchy-list">
         <label class="hierarchy-item">
           <input
@@ -117,7 +125,7 @@
           <span class="custom-check"></span>
           <div class="hierarchy-meta">
             <span class="hierarchy-name">Vías Arteriales y Troncales</span>
-            <span class="hierarchy-desc">Autopistas, avenidas principales</span>
+            <span class="hierarchy-desc">Autopistas y avenidas principales</span>
           </div>
         </label>
 
@@ -143,7 +151,7 @@
           <span class="custom-check"></span>
           <div class="hierarchy-meta">
             <span class="hierarchy-name">Vías Colectoras</span>
-            <span class="hierarchy-desc">Distribución local intermedia</span>
+            <span class="hierarchy-desc">Distribución zonal intermedia</span>
           </div>
         </label>
 
@@ -156,7 +164,7 @@
           <span class="custom-check"></span>
           <div class="hierarchy-meta">
             <span class="hierarchy-name">Vías Residenciales</span>
-            <span class="hierarchy-desc">Acceso predial y barrial</span>
+            <span class="hierarchy-desc">Acceso local y barrial</span>
           </div>
         </label>
       </div>
@@ -167,7 +175,7 @@
     <button
       class="btn-reset"
       (click)="resetFilters()"
-      [disabled]="mapState.selectedLocality() === 'none'"
+      [disabled]="mapState.selectedLocality() === 'none' && mapState.selectedYear() === 'all'"
     >
       Restablecer Vista General
     </button>
