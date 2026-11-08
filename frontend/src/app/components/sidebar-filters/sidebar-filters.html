@@ -27,7 +27,7 @@
 
     <section class="control-card">
       <div class="section-title">
-        <h3>Sectorización Espacial</h3>
+        <h3>Sectorización y Malla Vial</h3>
       </div>
       <div class="field-group">
         <label for="upz-select">Unidad de Planeamiento (UPZ / UPL):</label>
@@ -35,86 +35,143 @@
           <select id="upz-select" (change)="onUpzChange($event)" [value]="mapState.selectedUpz()">
             <option value="all">Toda Bogotá D.C. (General)</option>
             <option *ngFor="let u of mapState.availableUpzList()" [value]="u.codigo">
-              {{ u.nombre }} (UPZ-{{ u.codigo }})
+              {{ u.nombre }} ({{ u.totalAccidentes }} siniestros)
             </option>
           </select>
         </div>
       </div>
-      
-      <div class="hierarchy-list" style="margin-top: 8px;">
+
+      <div class="hierarchy-list" style="margin-top: 4px;">
         <label class="hierarchy-item">
           <input type="checkbox" [checked]="mapState.showRoadNetwork()" (change)="onToggleRoadNetwork()" />
-          <span class="custom-check"></span>
           <div class="hierarchy-meta">
             <span class="hierarchy-name">Mostrar Malla Vial (Calles)</span>
+            <span class="hierarchy-desc">{{ mapState.roadCount() | number }} tramos visibles</span>
+          </div>
+        </label>
+
+        <label class="hierarchy-item" *ngIf="mapState.showRoadNetwork()">
+          <input type="checkbox" [checked]="mapState.autoFilterByZoom()" (change)="onToggleZoomFilter()" />
+          <div class="hierarchy-meta">
+            <span class="hierarchy-name">Detalle Progresivo por Zoom</span>
+            <span class="hierarchy-desc">Lejos: principales | Cerca (Zoom &ge; 14): residenciales</span>
           </div>
         </label>
       </div>
 
-      <div class="field-group" *ngIf="mapState.showRoadNetwork() && mapState.roadCount() > 0" style="margin-top: 10px;">
+      <div class="field-group" *ngIf="mapState.showRoadNetwork()">
+        <div class="slider-header">
+          <label for="road-opacity-slider">Transparencia / Opacidad de Vías:</label>
+          <span class="slider-value">{{ (mapState.roadOpacity() * 100) | number:'1.0-0' }}%</span>
+        </div>
+        <input
+          id="road-opacity-slider"
+          type="range"
+          class="opacity-slider"
+          min="0.1"
+          max="1"
+          step="0.05"
+          [value]="mapState.roadOpacity()"
+          (input)="onOpacityChange($event)"
+        />
+      </div>
+
+      <div class="field-group" *ngIf="mapState.showRoadNetwork() && mapState.roadCount() > 0">
         <label for="road-search">Buscar vía por nombre:</label>
         <div class="search-box">
-          <input id="road-search" type="text" placeholder="Ej: Carrera 7..." [(ngModel)]="searchQueryText" (keyup.enter)="onSearch()" />
+          <input id="road-search" type="text" placeholder="Ej: Carrera 7, Calle 100..." [(ngModel)]="searchQueryText" (keyup.enter)="onSearch()" />
           <button type="button" class="btn-search-action" (click)="onSearch()">Buscar</button>
         </div>
         <div class="search-actions-row" *ngIf="mapState.activeSearchQuery().length > 0">
           <label class="isolate-label">
             <input type="checkbox" [checked]="mapState.isolateSearchedRoad()" (change)="onToggleIsolate()" />
-            Ocultar las demás
+            Ocultar las demás vías
           </label>
-          <button type="button" class="btn-clear-search" (click)="onClearSearch()">✕ Quitar</button>
+          <button type="button" class="btn-clear-search" (click)="onClearSearch()">Quitar filtro</button>
         </div>
       </div>
     </section>
 
     <section class="control-card">
       <div class="section-title">
-        <h3>Filtros Temporales</h3>
+        <h3>Filtros Temporales Reactivos</h3>
       </div>
+
       <div class="field-group">
         <label for="year-select">Año de ocurrencia:</label>
         <div class="select-wrapper">
           <select id="year-select" (change)="onYearChange($event)" [value]="mapState.selectedYear()">
-            <option value="all">Todos los registros disponibles</option>
+            <option value="all">Todos los años</option>
             <option *ngFor="let anio of mapState.availableYears()" [value]="anio">Año {{ anio }}</option>
           </select>
         </div>
       </div>
+
+      <div class="date-subgrid">
+        <div class="field-group">
+          <label for="month-select">Mes:</label>
+          <div class="select-wrapper">
+            <select id="month-select" (change)="onMonthChange($event)" [value]="mapState.selectedMonth()">
+              <option value="all">Todos los meses</option>
+              <option *ngFor="let m of mapState.months" [value]="m.value">{{ m.label }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="day-select">Día:</label>
+          <div class="select-wrapper">
+            <select id="day-select" (change)="onDayChange($event)" [value]="mapState.selectedDay()">
+              <option value="all">Todos</option>
+              <option *ngFor="let d of mapState.days" [value]="d">Día {{ d }}</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div class="hierarchy-list">
         <label class="hierarchy-item">
           <input type="checkbox" [checked]="mapState.showAccidentPoints()" (change)="onToggleAccidents()" />
-          <span class="custom-check"></span>
           <div class="hierarchy-meta">
             <span class="hierarchy-name">Mostrar Capa de Siniestralidad</span>
+            <span class="hierarchy-desc">{{ mapState.accidentCount() | number }} siniestros en la fecha seleccionada</span>
           </div>
         </label>
       </div>
     </section>
 
-    <section class="control-card" *ngIf="mapState.selectedUpz() !== 'all' && mapState.showRoadNetwork()">
+    <section class="control-card" *ngIf="mapState.showRoadNetwork()">
       <div class="section-title">
-        <h3>Jerarquía Vial de la UPZ</h3>
+        <h3>Jerarquía Vial Habilitada</h3>
       </div>
       <div class="hierarchy-list">
         <label class="hierarchy-item">
           <input type="checkbox" [checked]="mapState.selectedRoadTypes()['primary']" (change)="onToggleType('primary')" />
-          <span class="custom-check"></span>
-          <div class="hierarchy-meta"><span class="hierarchy-name">Arteriales / Troncales</span></div>
+          <div class="hierarchy-meta">
+            <span class="hierarchy-name">Arteriales / Troncales</span>
+            <span class="hierarchy-desc">Visibles en todos los niveles de zoom</span>
+          </div>
         </label>
         <label class="hierarchy-item">
           <input type="checkbox" [checked]="mapState.selectedRoadTypes()['secondary']" (change)="onToggleType('secondary')" />
-          <span class="custom-check"></span>
-          <div class="hierarchy-meta"><span class="hierarchy-name">Vías Secundarias</span></div>
+          <div class="hierarchy-meta">
+            <span class="hierarchy-name">Vías Secundarias</span>
+            <span class="hierarchy-desc">Visibles desde Zoom &ge; 12</span>
+          </div>
         </label>
         <label class="hierarchy-item">
           <input type="checkbox" [checked]="mapState.selectedRoadTypes()['tertiary']" (change)="onToggleType('tertiary')" />
-          <span class="custom-check"></span>
-          <div class="hierarchy-meta"><span class="hierarchy-name">Vías Colectoras</span></div>
+          <div class="hierarchy-meta">
+            <span class="hierarchy-name">Vías Colectoras</span>
+            <span class="hierarchy-desc">Visibles desde Zoom &ge; 13</span>
+          </div>
         </label>
         <label class="hierarchy-item">
           <input type="checkbox" [checked]="mapState.selectedRoadTypes()['residential']" (change)="onToggleType('residential')" />
-          <span class="custom-check"></span>
-          <div class="hierarchy-meta"><span class="hierarchy-name">Vías Residenciales</span></div>
+          <div class="hierarchy-meta">
+            <span class="hierarchy-name">Vías Residenciales</span>
+            <span class="hierarchy-desc">Visibles al acercar a Zoom &ge; 14</span>
+          </div>
         </label>
       </div>
     </section>

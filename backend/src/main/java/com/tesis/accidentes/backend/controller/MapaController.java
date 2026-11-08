@@ -10,9 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/**
- * Controlador REST para el suministro de capas cartograficas y datos de accidentalidad.
- */
 @RestController
 @RequestMapping("/api/mapa")
 public class MapaController {
@@ -25,19 +22,32 @@ public class MapaController {
 
     @GetMapping("/calles")
     public ResponseEntity<GeoJsonCollectionDto> getCalles(
-            @RequestParam(name = "localidad", required = false) String localidad) {
-        return ResponseEntity.ok(mapaService.obtenerCallesGeoJson(localidad));
+            @RequestParam(required = false) String localidad,
+            @RequestParam(required = false) String upz) {
+        return ResponseEntity.ok(mapaService.obtenerCalles(localidad, upz));
     }
 
     @GetMapping("/accidentes")
     public ResponseEntity<GeoJsonCollectionDto> getAccidentes(
-            @RequestParam(name = "localidad", required = false) String codigoLocalidad,
-            @RequestParam(name = "anio", required = false) String anio) {
-        return ResponseEntity.ok(mapaService.obtenerAccidentesGeoJson(codigoLocalidad, anio));
+            @RequestParam(required = false) String localidad,
+            @RequestParam(required = false) String anio,
+            @RequestParam(required = false) String mes,
+            @RequestParam(required = false) String dia,
+            @RequestParam(required = false) String upz) {
+        return ResponseEntity.ok(mapaService.obtenerAccidentes(localidad, anio, mes, dia, upz));
+    }
+
+    @GetMapping("/upz")
+    public ResponseEntity<GeoJsonCollectionDto> getUpz(
+            @RequestParam(required = false) String localidad,
+            @RequestParam(required = false) String anio,
+            @RequestParam(required = false) String mes,
+            @RequestParam(required = false) String dia) {
+        return ResponseEntity.ok(mapaService.obtenerUpz(localidad, anio, mes, dia));
     }
 
     @GetMapping("/anios")
-    public ResponseEntity<List<String>> getAniosDisponibles() {
+    public ResponseEntity<List<String>> getAnios() {
         return ResponseEntity.ok(mapaService.obtenerAniosDisponibles());
     }
 }

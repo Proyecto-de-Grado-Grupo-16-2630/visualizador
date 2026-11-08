@@ -1,9 +1,4 @@
-import sys
-import json
-import os
-import time
-import urllib.request
-import urllib.parse
+import sys, json, os, time, urllib.request, urllib.parse
 
 BBOX_LOCALIDADES = {
     "kennedy": [4.605, -74.185, 4.665, -74.125],
@@ -29,106 +24,59 @@ BBOX_LOCALIDADES = {
 }
 
 SERVIDORES = [
-    "https://overpass.kumi.systems/api/interpreter",
     "https://overpass-api.de/api/interpreter",
-    "https://overpass.private.coffee/api/interpreter"
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter"
 ]
 
 def descargar_localidad(nombre_localidad: str, carpeta_salida: str) -> bool:
     bbox = BBOX_LOCALIDADES[nombre_localidad]
     s, w, n, e = bbox[0], bbox[1], bbox[2], bbox[3]
-
-    query = f"""
-    [out:json][timeout:180];
-    (
-      way["highway"~"primary|secondary|tertiary|residential|trunk|living_street"]({s},{w},{n},{e});
-    );
-    out geom;
-    """
-
+    query = f'[out:json][timeout:180];(way["highway"~"primary|secondary|tertiary|residential|trunk|living_street"]({s},{w},{n},{e}););out geom;'
     data = urllib.parse.urlencode({"data": query}).encode("utf-8")
 
-    for intento, url_servidor in enumerate(SERVIDORES):
+    for intento, url_servidor in enumerate(SERVIDORES, 1):
         try:
-            print(f"Consultando {nombre_localidad} en servidor alternativo {intento + 1}...")
-            req = urllib.request.Request(
-                url_servidor,
-                data=data,
-                headers={"User-Agent": f"VisorTesisBogotaEngine/{intento + 1}.0"}
-            )
-            with urllib.request.urlopen(req, timeout=190) as resp:
+            print(f"Consultando {nombre_localidad} en servidor {intento} ({url_servidor})...")
+            req = urllib.request.Request(url_servidor, data=data, headers={"User-Agent": f"TesisBogotaGeo/{intento}.0"})
+            with urllib.request.urlopen(req, timeout=180) as resp:
                 resultado = json.loads(resp.read().decode("utf-8"))
 
-            elementos = resultado.get("elements", [])
             features = []
-
-            for elem in elementos:
+            for elem in resultado.get("elements", []):
                 geometria_pts = elem.get("geometry", [])
-                if len(geometria_pts) < 2:
-                    continue
-
+                if len(geometria_pts) < 2: continue
                 coords = [[round(p["lon"], 5), round(p["lat"], 5)] for p in geometria_pts]
                 tags = elem.get("tags", {})
-                nombre = tags.get("name", "").strip()
-                tipo = tags.get("highway", "residential")
-
                 features.append({
                     "type": "Feature",
-                    "properties": {
-                        "id": str(elem.get("id")),
-                        "nom": nombre,
-                        "tipo": tipo
-                    },
-                    "geometry": {
-                        "type": "LineString",
-                        "coordinates": coords
-                    }
+                    "properties": {"id": str(elem.get("id")), "nom": tags.get("name", "").strip(), "tipo": tags.get("highway", "residential")},
+                    "geometry": {"type": "LineString", "coordinates": coords}
                 })
 
-            geojson_final = {
-                "type": "FeatureCollection",
-                "features": features
-            }
-
-            ruta_archivo = os.path.join(carpeta_salida, f"{nombre_localidad}.geojson")
-            with open(ruta_archivo, "w", encoding="utf-8") as f:
-                json.dump(geojson_final, f, separators=(",", ":"), ensure_ascii=False)
-
-            print(f"Descargada con exito: {nombre_localidad} ({len(features)} tramos)")
-            return True
-
+            if features:
+                ruta_archivo = os.path.join(carpeta_salida, f"{nombre_localidad}.geojson")
+                with open(ruta_archivo, "w", encoding="utf-8") as f:
+                    json.dump({"type": "FeatureCollection", "features": features}, f, separators=(",", ":"), ensure_ascii=False)
+                print(f"-> Descargada con exito: {nombre_localidad} ({len(features)} tramos)")
+                return True
         except Exception as err:
-            print(f"Fallo en servidor {intento + 1}: {err}")
-            time.sleep(5)
-
+            print(f"   Aviso en servidor {intento}: {err}")
+            time.sleep(3)
     return False
 
 def ejecutar():
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    carpeta_destino = os.path.join(base_dir, "frontend", "public", "data", "localidades")
+    carpeta_destino = os.path.join(base_dir, "backend", "data", "raw", "localidades")
     os.makedirs(carpeta_destino, exist_ok=True)
-
-    arg = sys.argv[1].lower().strip() if len(sys.argv) > 1 else "missing"
-
-    if arg in ["all", "missing"]:
-        for loc in BBOX_LOCALIDADES.keys():
-            ruta_existente = os.path.join(carpeta_destino, f"{loc}.geojson")
-            if os.path.exists(ruta_existente) and os.path.getsize(ruta_existente) > 1000:
-                print(f"Omitiendo {loc} (ya existe)")
-                continue
-
-            print(f"Descargando pendiente: {loc}")
-            exito = descargar_localidad(loc, carpeta_destino)
-            if exito:
-                time.sleep(6)
-            else:
-                time.sleep(12)
-        print("Proceso de descarga de pendientes completado.")
-    else:
-        if arg in BBOX_LOCALIDADES:
-            descargar_localidad(arg, carpeta_destino)
-        else:
-            print(f"Localidad no valida: {arg}")
+    for loc in BBOX_LOCALIDADES.keys():
+        ruta_existente = os.path.join(carpeta_destino, f"{loc}.geojson")
+        if os.path.exists(ruta_existente) and os.path.getsize(ruta_existente) > 500:
+            print(f"[OK] {loc} ya existe ({os.path.getsize(ruta_existente)//1024} KB).")
+            continue
+        descargar_localidad(loc, carpeta_destino)
+        time.sleep(2)
 
 if __name__ == "__main__":
     ejecutar()

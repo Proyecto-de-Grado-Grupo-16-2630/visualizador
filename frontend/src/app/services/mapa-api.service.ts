@@ -11,7 +11,7 @@ export class MapaApiService {
 
   public getCalles(localidad?: string | null, codigoUpz?: string | null): Observable<GeoJSON.FeatureCollection> {
     let params = new HttpParams();
-    if (localidad && localidad !== 'none' && localidad !== 'all_city') {
+    if (localidad && localidad !== 'none' && localidad !== 'all_city' && localidad !== 'all') {
       params = params.set('localidad', localidad);
     }
     if (codigoUpz && codigoUpz !== 'all') {
@@ -20,13 +20,25 @@ export class MapaApiService {
     return this.http.get<GeoJSON.FeatureCollection>(`${this.API_URL}/calles`, { params });
   }
 
-  public getAccidentes(codigoLocalidad?: string | null, anio?: string | null, codigoUpz?: string | null): Observable<GeoJSON.FeatureCollection> {
+  public getAccidentes(
+    codigoLocalidad?: string | null,
+    anio?: string | null,
+    mes?: string | null,
+    dia?: string | null,
+    codigoUpz?: string | null
+  ): Observable<GeoJSON.FeatureCollection> {
     let params = new HttpParams();
     if (codigoLocalidad && codigoLocalidad !== 'all') {
       params = params.set('localidad', codigoLocalidad);
     }
     if (anio && anio !== 'all') {
       params = params.set('anio', anio);
+    }
+    if (mes && mes !== 'all') {
+      params = params.set('mes', mes);
+    }
+    if (dia && dia !== 'all') {
+      params = params.set('dia', dia);
     }
     if (codigoUpz && codigoUpz !== 'all') {
       params = params.set('upz', codigoUpz);
@@ -34,13 +46,24 @@ export class MapaApiService {
     return this.http.get<GeoJSON.FeatureCollection>(`${this.API_URL}/accidentes`, { params });
   }
 
-  public getUpz(codigoLocalidad?: string | null, anio?: string | null): Observable<GeoJSON.FeatureCollection> {
+  public getUpz(
+    codigoLocalidad?: string | null,
+    anio?: string | null,
+    mes?: string | null,
+    dia?: string | null
+  ): Observable<GeoJSON.FeatureCollection> {
     let params = new HttpParams();
     if (codigoLocalidad && codigoLocalidad !== 'all') {
       params = params.set('localidad', codigoLocalidad);
     }
     if (anio && anio !== 'all') {
       params = params.set('anio', anio);
+    }
+    if (mes && mes !== 'all') {
+      params = params.set('mes', mes);
+    }
+    if (dia && dia !== 'all') {
+      params = params.set('dia', dia);
     }
     return this.http.get<GeoJSON.FeatureCollection>(`${this.API_URL}/upz`, { params });
   }

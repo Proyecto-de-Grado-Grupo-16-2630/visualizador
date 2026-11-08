@@ -8,13 +8,22 @@
     </div>
     <div class="kpi-divider" *ngIf="mapState.showRoadNetwork()"></div>
     <div class="kpi-card" *ngIf="mapState.showRoadNetwork()">
-      <span class="kpi-title">Tramos Viales</span>
+      <span class="kpi-title">Tramos (Zoom {{ mapState.currentZoom() }})</span>
       <span class="kpi-value">{{ mapState.roadCount() | number }}</span>
     </div>
     <div class="kpi-divider" *ngIf="mapState.showAccidentPoints()"></div>
     <div class="kpi-card" *ngIf="mapState.showAccidentPoints()">
       <span class="kpi-title">Siniestros</span>
       <span class="kpi-value danger">{{ mapState.accidentCount() | number }}</span>
+    </div>
+    <div class="kpi-divider"></div>
+    <div class="kpi-card">
+      <span class="kpi-title">Filtro Fecha</span>
+      <span class="kpi-value">
+        {{ mapState.selectedYear() === 'all' ? 'Todos' : mapState.selectedYear() }} /
+        {{ mapState.selectedMonth() === 'all' ? 'Todos' : mapState.selectedMonth() }} /
+        {{ mapState.selectedDay() === 'all' ? 'Todos' : mapState.selectedDay() }}
+      </span>
     </div>
   </div>
 
@@ -41,8 +50,6 @@
     </div>
 
     <div class="legend-body" *ngIf="!isLegendCollapsed()">
-      
-      <!-- LEYENDA VISTA 1: PUNTOS -->
       <div class="legend-group" *ngIf="mapState.showAccidentPoints() && mapState.visualizationMode() === 'points'">
         <span class="legend-subtitle">Siniestros (Gravedad)</span>
         <div class="legend-item"><span class="legend-dot fatal-dot"></span><span>Con Muertos (Grav. 1)</span></div>
@@ -50,7 +57,6 @@
         <div class="legend-item"><span class="legend-dot damage-dot"></span><span>Solo Daños (Grav. 3)</span></div>
       </div>
 
-      <!-- LEYENDA VISTA 2: MAPA DE CALOR -->
       <div class="legend-group" *ngIf="mapState.showAccidentPoints() && mapState.visualizationMode() === 'heatmap'">
         <span class="legend-subtitle">Densidad Térmica</span>
         <div class="heat-gradient-bar"></div>
@@ -59,10 +65,9 @@
         </div>
       </div>
 
-      <!-- LEYENDA VISTA 3: COROPLETAS -->
       <div class="legend-group" *ngIf="mapState.showAccidentPoints() && mapState.visualizationMode() === 'choropleth'">
         <span class="legend-subtitle">Siniestros por UPZ</span>
-        <div class="legend-item"><span class="legend-box" style="background:#7F1D1D"></span><span>> 200 siniestros</span></div>
+        <div class="legend-item"><span class="legend-box" style="background:#7F1D1D"></span><span>&gt; 200 siniestros</span></div>
         <div class="legend-item"><span class="legend-box" style="background:#B91C1C"></span><span>141 – 200</span></div>
         <div class="legend-item"><span class="legend-box" style="background:#EF4444"></span><span>91 – 140</span></div>
         <div class="legend-item"><span class="legend-box" style="background:#F97316"></span><span>51 – 90</span></div>
@@ -71,15 +76,13 @@
         <div class="legend-item"><span class="legend-box" style="background:#FEF08A"></span><span>0 – 5</span></div>
       </div>
 
-      <!-- LEYENDA MALLA VIAL -->
       <div class="legend-group" *ngIf="mapState.showRoadNetwork() && mapState.roadCount() > 0">
-        <span class="legend-subtitle">Jerarquía Vial</span>
-        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['primary']"><span class="legend-line primary-line"></span><span>Arterial / Troncal</span></div>
-        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['secondary']"><span class="legend-line secondary-line"></span><span>Vía Secundaria</span></div>
-        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['tertiary']"><span class="legend-line tertiary-line"></span><span>Vía Colectora</span></div>
-        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['residential']"><span class="legend-line residential-line"></span><span>Vía Residencial</span></div>
+        <span class="legend-subtitle">Jerarquía Vial (Opacidad {{ (mapState.roadOpacity() * 100) | number:'1.0-0' }}%)</span>
+        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['primary']"><span class="legend-line primary-line"></span><span>Arterial / Troncal (Todo zoom)</span></div>
+        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['secondary']"><span class="legend-line secondary-line"></span><span>Secundaria (Zoom &ge; 12)</span></div>
+        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['tertiary']"><span class="legend-line tertiary-line"></span><span>Colectora (Zoom &ge; 13)</span></div>
+        <div class="legend-item" *ngIf="mapState.selectedRoadTypes()['residential']"><span class="legend-line residential-line"></span><span>Residencial (Zoom &ge; 14)</span></div>
       </div>
-
     </div>
   </div>
 </div>
