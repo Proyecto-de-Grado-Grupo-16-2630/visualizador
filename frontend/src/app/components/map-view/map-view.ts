@@ -3,7 +3,7 @@ import { CommonModule, DecimalPipe } from '@angular/common';
 import * as L from 'leaflet';
 import 'leaflet.heat';
 import { MapStateService } from '../../services/map-state.service';
-import { MapaApiService } from '../../services/mapa-api.service';
+import { MapaApiService, PrediccionResponse } from '../../services/mapa-api.service';
 
 @Component({
   selector: 'app-map-view',
@@ -21,8 +21,12 @@ export class MapViewComponent implements OnInit, OnDestroy {
   private accidentLayer: L.LayerGroup | null = null;
   private heatLayer: any = null;
   private choroplethLayer: L.GeoJSON | null = null;
+  private predictionLayer: L.LayerGroup | null = null;
   private layerControl!: L.Control.Layers;
   private currentGeoJsonData: GeoJSON.FeatureCollection | null = null;
+
+  private roadsRenderer!: L.Canvas;
+  private accidentsRenderer!: L.Canvas;
 
   public errorMessage = signal<string | null>(null);
   public isLegendCollapsed = signal<boolean>(false);
@@ -31,7 +35,6 @@ export class MapViewComponent implements OnInit, OnDestroy {
   private readonly DEFAULT_ZOOM: number = 12;
 
   constructor() {
-    // 1. Consulta al Backend cuando cambia la UPZ o se prende/apaga la malla vial
     effect(() => {
       const upzCode = this.mapState.selectedUpz();
       const showRoads = this.mapState.showRoadNetwork();
@@ -44,7 +47,6 @@ export class MapViewComponent implements OnInit, OnDestroy {
       }
     });
 
-    // 2. Re-filtrar tipos de via cuando cambia jerarquia manual, zoom progresivo o busqueda
     effect(() => {
       this.mapState.selectedRoadTypes();
       this.mapState.autoFilterByZoom();
@@ -56,7 +58,6 @@ export class MapViewComponent implements OnInit, OnDestroy {
       }
     });
 
-    // 3. Actualizar transparencia/opacidad de las vias instantaneamente al mover el slider
     effect(() => {
       this.mapState.roadOpacity();
       if (this.roadLayer) {
@@ -64,12 +65,10 @@ export class MapViewComponent implements OnInit, OnDestroy {
       }
     });
 
-    // 4. Consulta reactiva de Accidentes / Calor / Coropletas ante cualquier cambio de Anio, Mes, Dia o UPZ
     effect(() => {
       const showAcc = this.mapState.showAccidentPoints();
       const year = this.mapState.selectedYear();
       const month = this.mapState.selectedMonth();
-      const day = this.mapState.selectedDay();
       const upzCode = this.mapState.selectedUpz();
       const mode = this.mapState.visualizationMode();
 
@@ -77,17 +76,25 @@ export class MapViewComponent implements OnInit, OnDestroy {
         if (!showAcc) {
           this.clearAllAccidentVisualizations();
         } else if (mode === 'choropleth') {
-          this.fetchChoroplethFromBackend(year, month, day, upzCode);
+          this.fetchChoroplethFromBackend(year, month, upzCode);
         } else {
-          this.fetchAccidentsFromBackend(year, month, day, upzCode, mode);
+          this.fetchAccidentsFromBackend(year, month, upzCode, mode);
         }
+      }
+    });
+
+    // Efecto reactivo para pintar el marcador de Prediccion ML cuando llega una respuesta
+    effect(() => {
+      const predResult = this.mapState.predictionResult();
+      if (this.map) {
+        this.renderPredictionMarker(predResult);
       }
     });
   }
 
   ngOnInit(): void {
     this.initializeMap();
-    this.fetchAccidentsFromBackend('all', 'all', 'all', 'all', 'points');
+    this.fetchAccidentsFromBackend('all', 'all', 'all', 'points');
   }
 
   ngOnDestroy(): void {
@@ -101,6 +108,7 @@ export class MapViewComponent implements OnInit, OnDestroy {
   private initializeMap(): void {
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
     const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 });
+    const lightLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 });
 
     this.map = L.map('map-container', {
       center: this.BOGOTA_CENTER,
@@ -113,9 +121,30 @@ export class MapViewComponent implements OnInit, OnDestroy {
       layers: [osmLayer]
     });
 
+    // Jerarquia Z-Index estricta:
+    // 1. Coropletas (350) -> 2. Calles (410) -> 3. Accidentes Historicos (650) -> 4. Prediccion ML (720)
+    this.map.createPane('choroplethPane');
+    this.map.getPane('choroplethPane')!.style.zIndex = '350';
+
+    this.map.createPane('roadsPane');
+    this.map.getPane('roadsPane')!.style.zIndex = '410';
+
+    this.map.createPane('accidentsPane');
+    this.map.getPane('accidentsPane')!.style.zIndex = '650';
+
+    this.map.createPane('predictionPane');
+    this.map.getPane('predictionPane')!.style.zIndex = '720';
+
+    this.roadsRenderer = L.canvas({ pane: 'roadsPane', padding: 0.5 });
+    this.accidentsRenderer = L.canvas({ pane: 'accidentsPane', padding: 0.5 });
+
     this.map.attributionControl.setPrefix('Leaflet | IDECA / OpenStreetMap');
     L.control.zoom({ position: 'bottomright' }).addTo(this.map);
-    this.layerControl = L.control.layers({ 'OpenStreetMap': osmLayer, 'CartoDB Dark': darkLayer }, undefined, { position: 'topright' }).addTo(this.map);
+    this.layerControl = L.control.layers(
+      { 'OpenStreetMap': osmLayer, 'CartoDB Positron': lightLayer, 'CartoDB Dark': darkLayer },
+      undefined,
+      { position: 'topright' }
+    ).addTo(this.map);
 
     this.map.on('zoomend', () => {
       const newZoom = this.map.getZoom();
@@ -128,6 +157,81 @@ export class MapViewComponent implements OnInit, OnDestroy {
         }
       }
     });
+  }
+
+  /**
+   * Renderiza el marcador de riesgo vial devuelto por FastAPI cuando ubicacion.estado === 'ENCONTRADA'.
+   */
+  private renderPredictionMarker(res: PrediccionResponse | null): void {
+    if (this.predictionLayer) {
+      this.map.removeLayer(this.predictionLayer);
+      this.predictionLayer = null;
+    }
+
+    if (!res || !res.ubicacion) return;
+    const ubi = res.ubicacion;
+
+    if (ubi.estado === 'ENCONTRADA' && ubi.latitud !== null && ubi.longitud !== null) {
+      const lat = Number(ubi.latitud);
+      const lon = Number(ubi.longitud);
+      const riskColor = this.mapState.getRiskLevelColor(res.nivel_riesgo);
+
+      this.predictionLayer = L.layerGroup();
+
+      // Halo exterior de alerta
+      const outerHalo = L.circleMarker([lat, lon], {
+        pane: 'predictionPane',
+        radius: 18,
+        fillColor: riskColor,
+        color: riskColor,
+        weight: 2,
+        opacity: 0.75,
+        fillOpacity: 0.25
+      });
+
+      // Nucleo central con el color oficial del nivel de riesgo (#FF0000, #FF8C00, #FFD700, #008000)
+      const coreMarker = L.circleMarker([lat, lon], {
+        pane: 'predictionPane',
+        radius: 9,
+        fillColor: riskColor,
+        color: '#FFFFFF',
+        weight: 2.5,
+        opacity: 1,
+        fillOpacity: 1
+      });
+
+      const pDanos = ((res.probabilidades?.solo_danos || 0) * 100).toFixed(1);
+      const pHeridos = ((res.probabilidades?.con_heridos || 0) * 100).toFixed(1);
+      const pMuertos = ((res.probabilidades?.con_muertos || 0) * 100).toFixed(1);
+
+      const popupHtml = `
+        <div style="font-family: 'Segoe UI', sans-serif; min-width: 220px; line-height: 1.4;">
+          <div style="background:${riskColor}; color:${res.nivel_riesgo === 'MEDIO' ? '#0f172a' : '#fff'}; padding:4px 8px; border-radius:4px; font-weight:700; font-size:12px; margin-bottom:6px;">
+            NIVEL DE RIESGO: ${res.nivel_riesgo}
+          </div>
+          <div style="font-size:13px; font-weight:700; margin-bottom:4px;">
+            Severidad Predicha: ${res.prediccion_descripcion}
+          </div>
+          <div style="font-size:11.5px; color:#334155; margin-bottom:6px;">
+            • Solo Daños: <b>${pDanos}%</b><br>
+            • Con Heridos: <b>${pHeridos}%</b><br>
+            • Con Muertos: <b>${pMuertos}%</b>
+          </div>
+          <hr style="border:0; border-top:1px solid #cbd5e1; margin:5px 0;">
+          <div style="font-size:11px; color:#475569;">
+            <b>Dirección oficial:</b><br>${ubi.direccion_oficial || ubi.direccion_normalizada}
+          </div>
+        </div>
+      `;
+
+      coreMarker.bindPopup(popupHtml);
+      this.predictionLayer.addLayer(outerHalo);
+      this.predictionLayer.addLayer(coreMarker);
+      this.predictionLayer.addTo(this.map);
+
+      this.map.flyTo([lat, lon], 16, { duration: 1.25 });
+      coreMarker.openPopup();
+    }
   }
 
   private fetchRoadsFromBackend(upzCode: string): void {
@@ -146,8 +250,8 @@ export class MapViewComponent implements OnInit, OnDestroy {
     });
   }
 
-  private fetchAccidentsFromBackend(year: string, month: string, day: string, upzCode: string, mode: 'points' | 'heatmap'): void {
-    this.mapaApi.getAccidentes(null, year, month, day, upzCode).subscribe({
+  private fetchAccidentsFromBackend(year: string, month: string, upzCode: string, mode: 'points' | 'heatmap'): void {
+    this.mapaApi.getAccidentes(null, year, month, upzCode).subscribe({
       next: (collection) => {
         this.clearAllAccidentVisualizations();
         if (mode === 'heatmap') this.renderHeatmap(collection);
@@ -156,8 +260,8 @@ export class MapViewComponent implements OnInit, OnDestroy {
     });
   }
 
-  private fetchChoroplethFromBackend(year: string, month: string, day: string, upzCode: string): void {
-    this.mapaApi.getUpz(null, year, month, day).subscribe({
+  private fetchChoroplethFromBackend(year: string, month: string, upzCode: string): void {
+    this.mapaApi.getUpz(null, year, month).subscribe({
       next: (collection) => {
         this.clearAllAccidentVisualizations();
         this.renderChoroplethUpz(collection, upzCode);
@@ -168,6 +272,7 @@ export class MapViewComponent implements OnInit, OnDestroy {
   private renderAccidents(collection: GeoJSON.FeatureCollection): void {
     this.accidentLayer = L.layerGroup();
     let count = 0;
+
     for (const feat of (collection?.features || [])) {
       const geom = feat.geometry as GeoJSON.Point;
       if (!geom || geom.type !== 'Point' || !geom.coordinates) continue;
@@ -175,22 +280,25 @@ export class MapViewComponent implements OnInit, OnDestroy {
       const props = feat.properties || {};
       const gravedadCode = String(props['GRAVEDAD'] || '3').trim();
       let fillColor = '#F59E0B';
-      let borderColor = '#B45309';
+      let borderColor = '#78350F';
       if (gravedadCode === '1') { fillColor = '#991B1B'; borderColor = '#450A0A'; }
-      else if (gravedadCode === '2') { fillColor = '#EF4444'; borderColor = '#991B1B'; }
+      else if (gravedadCode === '2') { fillColor = '#EF4444'; borderColor = '#7F1D1D'; }
 
       const marker = L.circleMarker([lat, lon], {
-        radius: 4.8,
+        pane: 'accidentsPane',
+        renderer: this.accidentsRenderer,
+        radius: 5,
         fillColor,
         color: borderColor,
-        weight: 1.3,
-        opacity: 0.95,
-        fillOpacity: 0.85
+        weight: 1.4,
+        opacity: 1,
+        fillOpacity: 0.92
       });
       marker.bindPopup(
         `<b>Siniestro #${props['CODIGO_ACCIDENTE']}</b><br>` +
         `<b>Fecha:</b> ${props['FECHA']} ${props['HORA'] || ''}<br>` +
         `<b>Gravedad:</b> ${props['GRAVEDAD_DESC']}<br>` +
+        `<b>Clase:</b> ${props['CLASE_DESC'] || 'N/A'}<br>` +
         `<b>UPZ:</b> ${props['NOMBRE_UPZ'] || 'N/A'}<br>` +
         `<b>Dirección:</b> ${props['DIRECCION_COMPLETA']}`
       );
@@ -215,6 +323,7 @@ export class MapViewComponent implements OnInit, OnDestroy {
     const heatFactory = (L as any).heatLayer;
     if (heatFactory) {
       this.heatLayer = heatFactory(heatPoints, {
+        pane: 'accidentsPane',
         radius: 22, blur: 16, maxZoom: 16, max: 1.0,
         gradient: { 0.2: '#3B82F6', 0.45: '#10B981', 0.7: '#F59E0B', 0.9: '#EF4444', 1.0: '#7F1D1D' }
       }).addTo(this.map);
@@ -232,7 +341,9 @@ export class MapViewComponent implements OnInit, OnDestroy {
     for (const f of filteredFeatures) totalAccidentsInUpz += Number(f.properties?.['total_accidentes'] || 0);
 
     this.choroplethLayer = L.geoJSON({ type: 'FeatureCollection', features: filteredFeatures } as any, {
+      pane: 'choroplethPane',
       style: (feature: any) => ({
+        pane: 'choroplethPane',
         fillColor: this.getChoroplethColor(Number(feature?.properties?.['total_accidentes'] || 0)),
         weight: 1.8, opacity: 1, color: '#1E293B', dashArray: '3', fillOpacity: 0.72
       }),
@@ -245,7 +356,6 @@ export class MapViewComponent implements OnInit, OnDestroy {
         layer.on({
           mouseover: (e: any) => {
             e.target.setStyle({ weight: 3.2, color: '#38BDF8', dashArray: '', fillOpacity: 0.86 });
-            if (e.target.bringToFront) e.target.bringToFront();
           },
           mouseout: (e: any) => {
             if (this.choroplethLayer) this.choroplethLayer.resetStyle(e.target);
@@ -264,7 +374,7 @@ export class MapViewComponent implements OnInit, OnDestroy {
   }
 
   public getChoroplethColor(d: number): string {
-    return d > 200 ? '#7F1D1D' : d > 140 ? '#B91C1C' : d > 90 ? '#EF4444' : d > 50 ? '#F97316' : d > 20 ? '#F59E0B' : d > 5 ? '#FCD34D' : '#FEF08A';
+    return d > 350 ? '#7F1D1D' : d > 220 ? '#B91C1C' : d > 140 ? '#EF4444' : d > 80 ? '#F97316' : d > 35 ? '#F59E0B' : d > 10 ? '#FCD34D' : '#FEF08A';
   }
 
   private clearCurrentRoads(): void {
@@ -293,15 +403,11 @@ export class MapViewComponent implements OnInit, OnDestroy {
       if (nom.includes(query)) {
         matchCount++;
         if (layer.getBounds) bounds.extend(layer.getBounds());
-        if (layer.bringToFront) layer.bringToFront();
       }
     });
     if (matchCount > 0 && bounds.isValid()) this.map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
   }
 
-  /**
-   * Determina si un tipo de via debe mostrarse segun los checkboxes y el nivel de Zoom actual.
-   */
   private isRoadVisibleAtCurrentZoom(tipo: string, zoom: number): boolean {
     const visibleTypes = this.mapState.selectedRoadTypes();
     const autoZoom = this.mapState.autoFilterByZoom();
@@ -335,18 +441,13 @@ export class MapViewComponent implements OnInit, OnDestroy {
     const filteredFeatures = (data.features || []).filter((f) => {
       const tipo = String(f.properties?.['tipo'] || 'residential').toLowerCase();
       const nom = String(f.properties?.['nom'] || '').toLowerCase();
-
-      // Si el usuario busco una calle por nombre, siempre mostrar las coincidencias
-      if (query.length > 0 && nom.includes(query)) {
-        return true;
-      }
-      if (query.length > 0 && isolate) {
-        return false;
-      }
+      if (query.length > 0 && nom.includes(query)) return true;
+      if (query.length > 0 && isolate) return false;
       return this.isRoadVisibleAtCurrentZoom(tipo, currentZoom);
     });
 
     this.roadLayer = L.geoJSON({ type: 'FeatureCollection', features: filteredFeatures } as any, {
+      pane: 'roadsPane',
       style: (f: any) => this.getRoadStyle(f, currentZoom),
       onEachFeature: (f: any, layer: any) => {
         const nom = f.properties?.['nom'] || 'Vía Urbana';
@@ -375,7 +476,13 @@ export class MapViewComponent implements OnInit, OnDestroy {
     const opacity = this.mapState.roadOpacity();
 
     if (query.length > 0 && nom.includes(query)) {
-      return { color: '#A855F7', weight: 4.2, opacity: 1 };
+      return {
+        pane: 'roadsPane',
+        renderer: this.roadsRenderer,
+        color: '#A855F7',
+        weight: 4.2,
+        opacity: 1
+      };
     }
 
     const tipo = String(feature?.properties?.['tipo'] || 'residential').toLowerCase();
@@ -387,7 +494,13 @@ export class MapViewComponent implements OnInit, OnDestroy {
     const baseWeight = zoom >= 15 ? 3.2 : zoom >= 14 ? 2.3 : zoom >= 13 ? 1.8 : 1.3;
     const weight = isPrimary ? baseWeight + 0.8 : isSecondary ? baseWeight + 0.3 : baseWeight;
 
-    return { color, weight, opacity };
+    return {
+      pane: 'roadsPane',
+      renderer: this.roadsRenderer,
+      color,
+      weight,
+      opacity
+    };
   }
 
   private updateLayerStyles(): void {

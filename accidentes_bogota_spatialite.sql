@@ -1,13 +1,9 @@
--- ====================================================================
--- METADATOS Y CATÁLOGO SPATIALITE (EPSG 4326)
--- ====================================================================
 SELECT InitSpatialMetaData(1);
 
 DROP TABLE IF EXISTS puntos_accidentes;
 CREATE TABLE puntos_accidentes (id_local INTEGER PRIMARY KEY AUTOINCREMENT, "CHOQUE" TEXT, "CHOQUE_DESC" TEXT, "CLASE" TEXT, "CLASE_DESC" TEXT, "CODIGO_ACCIDENTE" TEXT, "CODIGO_LOCALIDAD" TEXT, "DIRECCION" TEXT, "DIRECCION_COMPLETA" TEXT, "DISENO_LUGAR" TEXT, "DISENO_LUGAR_DESC" TEXT, "FECHA" TEXT, "GRAVEDAD" TEXT, "GRAVEDAD_DESC" TEXT, "HORA" TEXT, "HORA_NUM" TEXT, "OBJETO_FIJO" TEXT, "OBJETO_FIJO_DESC" TEXT, "formatted_address" TEXT, "latlong" TEXT, "location_type" TEXT, "place_id" TEXT, "result_num" TEXT, "status" TEXT);
 SELECT AddGeometryColumn('puntos_accidentes', 'geom', 4326, 'POINT', 'XY');
 SELECT CreateSpatialIndex('puntos_accidentes', 'geom');
-
 BEGIN TRANSACTION;
 INSERT INTO puntos_accidentes ("CHOQUE", "CHOQUE_DESC", "CLASE", "CLASE_DESC", "CODIGO_ACCIDENTE", "CODIGO_LOCALIDAD", "DIRECCION", "DIRECCION_COMPLETA", "DISENO_LUGAR", "DISENO_LUGAR_DESC", "FECHA", "GRAVEDAD", "GRAVEDAD_DESC", "HORA", "HORA_NUM", "OBJETO_FIJO", "OBJETO_FIJO_DESC", "formatted_address", "latlong", "location_type", "place_id", "result_num", "status", geom) VALUES ('1.0', 'vehiculo', '1', 'automovil', '10531380', '11', 'cl 142 - kr 146  02', 'Calle 142 No. Carrera 146 - 02, Bogotá, Colombia', '1', 'tramo de via', '2020-12-31', '2', 'con heridos', '21:40:00', '21', NULL, 'no aplica (no es objeto fijo)', 'Cra. 146 #142-2 142 no, Bogotá, Colombia', '4.748025,-74.117846', 'ROOFTOP', 'EilDcmEuIDE0NiAjMTQyLTIgMTQyIG5vLCBCb2dvdMOhLCBDb2xvbWJpYSIiGiAKFgoUChIJ92Zn_H2EP44RykGVQD2gViQSBjE0MiBubw', '0', 'OK', GeomFromText('POINT(-74.117846 4.748025)', 4326));
 INSERT INTO puntos_accidentes ("CHOQUE", "CHOQUE_DESC", "CLASE", "CLASE_DESC", "CODIGO_ACCIDENTE", "CODIGO_LOCALIDAD", "DIRECCION", "DIRECCION_COMPLETA", "DISENO_LUGAR", "DISENO_LUGAR_DESC", "FECHA", "GRAVEDAD", "GRAVEDAD_DESC", "HORA", "HORA_NUM", "OBJETO_FIJO", "OBJETO_FIJO_DESC", "formatted_address", "latlong", "location_type", "place_id", "result_num", "status", geom) VALUES ('1.0', 'vehiculo', '1', 'automovil', '10530491', '1', 'cl 134-kr 5 08', 'Calle 134 No. Carrera 5 - 08, Bogotá, Colombia', '1', 'tramo de via', '2020-12-31', '3', 'solo daños', '21:34:00', '21', NULL, 'no aplica (no es objeto fijo)', 'Cra. 5 #22-08 134 no, Bogotá, Colombia', '4.6071711,-74.0692105', 'ROOFTOP', 'EidDcmEuIDUgIzIyLTA4IDEzNCBubywgQm9nb3TDoSwgQ29sb21iaWEiIhogChYKFAoSCQkPypuYmT-OEQqJj5GjUUFuEgYxMzQgbm8', '0', 'OK', GeomFromText('POINT(-74.0692105 4.6071711)', 4326));
@@ -3421,7 +3417,6 @@ DROP TABLE IF EXISTS calles_bogota;
 CREATE TABLE calles_bogota (id_local INTEGER PRIMARY KEY AUTOINCREMENT, localidad TEXT, "id" TEXT, "nom" TEXT, "tipo" TEXT);
 SELECT AddGeometryColumn('calles_bogota', 'geom', 4326, 'LINESTRING', 'XY');
 SELECT CreateSpatialIndex('calles_bogota', 'geom');
-
 BEGIN TRANSACTION;
 INSERT INTO calles_bogota (localidad, "id", "nom", "tipo", geom) VALUES ('antonionarino', '24020145', 'Avenida Carrera 30', 'trunk', GeomFromText('LINESTRING(-74.10696 4.5983, -74.10688 4.59835)', 4326));
 INSERT INTO calles_bogota (localidad, "id", "nom", "tipo", geom) VALUES ('antonionarino', '24152203', NULL, 'trunk_link', GeomFromText('LINESTRING(-74.11408 4.59688, -74.11402 4.59677, -74.11399 4.59672, -74.11398 4.59668, -74.11397 4.59662, -74.11397 4.59653, -74.11399 4.59639, -74.11402 4.59628, -74.11404 4.59623, -74.1141 4.59614, -74.11416 4.59608, -74.11426 4.59602)', 4326));

@@ -1,6 +1,8 @@
 import { Injectable, signal } from '@angular/core';
+import { PrediccionResponse } from './mapa-api.service';
 
 export type VisualizationMode = 'points' | 'heatmap' | 'choropleth';
+export type SidebarTab = 'explorer' | 'predictor';
 
 export interface UpzOption {
   codigo: string;
@@ -17,9 +19,10 @@ export interface MonthOption {
   providedIn: 'root'
 })
 export class MapStateService {
+  public activeSidebarTab = signal<SidebarTab>('explorer');
+
   public selectedYear = signal<string>('all');
   public selectedMonth = signal<string>('all');
-  public selectedDay = signal<string>('all');
   public availableYears = signal<string[]>([]);
   public selectedUpz = signal<string>('all');
   public availableUpzList = signal<UpzOption[]>([]);
@@ -37,27 +40,28 @@ export class MapStateService {
   public showAccidentPoints = signal<boolean>(true);
   public showRoadNetwork = signal<boolean>(true);
 
-  public roadOpacity = signal<number>(0.85);
+  public roadOpacity = signal<number>(0.75);
   public autoFilterByZoom = signal<boolean>(true);
 
-  public readonly months: MonthOption[] = [
-    { value: '01', label: '01 - Enero' },
-    { value: '02', label: '02 - Febrero' },
-    { value: '03', label: '03 - Marzo' },
-    { value: '04', label: '04 - Abril' },
-    { value: '05', label: '05 - Mayo' },
-    { value: '06', label: '06 - Junio' },
-    { value: '07', label: '07 - Julio' },
-    { value: '08', label: '08 - Agosto' },
-    { value: '09', label: '09 - Septiembre' },
-    { value: '10', label: '10 - Octubre' },
-    { value: '11', label: '11 - Noviembre' },
-    { value: '12', label: '12 - Diciembre' }
-  ];
+  // Estado del modelo de prediccion de riesgo ML
+  public predictionResult = signal<PrediccionResponse | null>(null);
+  public isPredicting = signal<boolean>(false);
+  public predictionError = signal<string | null>(null);
 
-  public readonly days: string[] = Array.from({ length: 31 }, (_, i) =>
-    String(i + 1).padStart(2, '0')
-  );
+  public readonly months: MonthOption[] = [
+    { value: '01', label: 'Enero' },
+    { value: '02', label: 'Febrero' },
+    { value: '03', label: 'Marzo' },
+    { value: '04', label: 'Abril' },
+    { value: '05', label: 'Mayo' },
+    { value: '06', label: 'Junio' },
+    { value: '07', label: 'Julio' },
+    { value: '08', label: 'Agosto' },
+    { value: '09', label: 'Septiembre' },
+    { value: '10', label: 'Octubre' },
+    { value: '11', label: 'Noviembre' },
+    { value: '12', label: 'Diciembre' }
+  ];
 
   public selectedRoadTypes = signal<Record<string, boolean>>({
     primary: true,
@@ -65,6 +69,20 @@ export class MapStateService {
     tertiary: true,
     residential: true
   });
+
+  public setSidebarTab(tab: SidebarTab): void {
+    this.activeSidebarTab.set(tab);
+  }
+
+  public hasActiveFilters(): boolean {
+    return (
+      this.selectedUpz() !== 'all' ||
+      this.selectedYear() !== 'all' ||
+      this.selectedMonth() !== 'all' ||
+      this.activeSearchQuery().length > 0 ||
+      this.predictionResult() !== null
+    );
+  }
 
   public setUpz(codigoUpz: string): void {
     this.selectedUpz.set(codigoUpz);
@@ -78,10 +96,6 @@ export class MapStateService {
 
   public setMonth(month: string): void {
     this.selectedMonth.set(month);
-  }
-
-  public setDay(day: string): void {
-    this.selectedDay.set(day);
   }
 
   public setRoadOpacity(opacity: number): void {
@@ -122,5 +136,22 @@ export class MapStateService {
 
   public toggleIsolateSearchedRoad(): void {
     this.isolateSearchedRoad.set(!this.isolateSearchedRoad());
+  }
+
+  public clearPrediction(): void {
+    this.predictionResult.set(null);
+    this.predictionError.set(null);
+  }
+
+  /**
+   * Retorna el color hexadecimal oficial de acuerdo con el umbral de nivel_riesgo.
+   */
+  public getRiskLevelColor(nivelRiesgo?: string | null): string {
+    const normalized = String(nivelRiesgo || '').toUpperCase().trim();
+    if (normalized === 'CRÍTICO' || normalized === 'CRITICO') return '#FF0000';
+    if (normalized === 'ALTO') return '#FF8C00';
+    if (normalized === 'MEDIO') return '#FFD700';
+    if (normalized === 'BAJO') return '#008000';
+    return '#38BDF8';
   }
 }

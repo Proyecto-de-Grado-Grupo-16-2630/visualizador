@@ -19,12 +19,12 @@ public class MapaService {
         return new GeoJsonCollectionDto(mapaRepository.findCalles(localidad, codigoUpz));
     }
 
-    public GeoJsonCollectionDto obtenerAccidentes(String codigoLocalidad, String anio, String mes, String dia, String codigoUpz) {
-        return new GeoJsonCollectionDto(mapaRepository.findAccidentes(codigoLocalidad, anio, mes, dia, codigoUpz));
+    public GeoJsonCollectionDto obtenerAccidentes(String codigoLocalidad, String anio, String mes, String codigoUpz) {
+        return new GeoJsonCollectionDto(mapaRepository.findAccidentes(codigoLocalidad, anio, mes, codigoUpz));
     }
 
-    public GeoJsonCollectionDto obtenerUpz(String codigoLocalidad, String anio, String mes, String dia) {
-        return new GeoJsonCollectionDto(mapaRepository.findUpzPolygons(codigoLocalidad, anio, mes, dia));
+    public GeoJsonCollectionDto obtenerUpz(String codigoLocalidad, String anio, String mes) {
+        return new GeoJsonCollectionDto(mapaRepository.findUpzPolygons(codigoLocalidad, anio, mes));
     }
 
     public List<String> obtenerAniosDisponibles() {

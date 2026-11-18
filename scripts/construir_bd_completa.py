@@ -1,4 +1,4 @@
-import glob, json, os, shutil, sqlite3, ssl, time, urllib.parse, urllib.request
+import csv, glob, json, os, re, shutil, sqlite3, ssl, sys, urllib.request
 from shapely.geometry import shape, Point, Polygon, MultiPolygon
 from shapely.strtree import STRtree
 
@@ -6,10 +6,39 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 RAW_DIR = os.path.join(BASE_DIR, "backend", "data", "raw")
 LOCALIDADES_DIR = os.path.join(RAW_DIR, "localidades")
 PUNTOS_GEOJSON = os.path.join(RAW_DIR, "puntos", "geocodificacion_Final_3406.geojson")
+PUNTOS_CSV = os.path.join(RAW_DIR, "puntos", "tesis_geocodificacion_consolidada_ROOFTOP_Bogota.csv")
 UPZ_GEOJSON = os.path.join(RAW_DIR, "upz", "upz_bogota.geojson")
 
 DB_BACKEND_PATH = os.path.join(BASE_DIR, "backend", "data", "accidentes_bogota_spatialite.db")
 DB_ROOT_PATH = os.path.join(BASE_DIR, "accidentes_bogota_spatialite.db")
+
+def normalizar_fecha_iso(fecha_raw, anio_col=None, mes_col=None):
+    texto = str(fecha_raw or "").strip()
+    if len(texto) >= 10 and texto[4] in ("-", "/") and texto[7] in ("-", "/"):
+        return f"{texto[:4]}-{texto[5:7]}-{texto[8:10]}"
+    m_iso = re.match(r"^(\d{4})[-/](\d{1,2})[-/](\d{1,2})", texto)
+    if m_iso:
+        return f"{int(m_iso.group(1)):04d}-{int(m_iso.group(2)):02d}-{int(m_iso.group(3)):02d}"
+    m_lat = re.match(r"^(\d{1,2})[-/](\d{1,2})[-/](\d{4})", texto)
+    if m_lat:
+        return f"{int(m_lat.group(3)):04d}-{int(m_lat.group(2)):02d}-{int(m_lat.group(1)):02d}"
+    if anio_col and mes_col:
+        try:
+            return f"{int(str(anio_col).strip()):04d}-{int(str(mes_col).strip()):02d}-01"
+        except ValueError:
+            pass
+    return texto
+
+def inferir_codigo_gravedad(grav_val, grav_desc):
+    g_str = str(grav_val or "").strip()
+    if g_str in ("1", "2", "3"):
+        return g_str
+    desc = str(grav_desc or "").lower()
+    if "muerto" in desc:
+        return "1"
+    if "herido" in desc:
+        return "2"
+    return "3"
 
 def obtener_poligonos_upz():
     os.makedirs(os.path.dirname(UPZ_GEOJSON), exist_ok=True)
@@ -17,7 +46,7 @@ def obtener_poligonos_upz():
         with open(UPZ_GEOJSON, "r", encoding="utf-8") as f:
             feats = json.load(f).get("features", [])
             if feats:
-                print(f"1. Usando {len(feats)} poligonos de UPZ en cache ({UPZ_GEOJSON}).")
+                print(f"1. Usando {len(feats)} poligonos de UPZ en cache.")
                 return feats
 
     ctx = ssl.create_default_context()
@@ -28,7 +57,6 @@ def obtener_poligonos_upz():
     ]
     for url in ideca_urls:
         try:
-            print(f"Consultando UPZ oficiales en IDECA: {url[:75]}...")
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=25, context=ctx) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
@@ -36,7 +64,6 @@ def obtener_poligonos_upz():
                 if feats:
                     with open(UPZ_GEOJSON, "w", encoding="utf-8") as f:
                         json.dump(data, f, ensure_ascii=False)
-                    print(f"-> Descargados {len(feats)} poligonos desde IDECA.")
                     return feats
         except Exception as e:
             print(f"   Aviso IDECA: {e}")
@@ -58,9 +85,9 @@ def extraer_propiedad(props, claves, default="", es_nombre=False):
     return default
 
 def construir_bd():
-    # Asegurar que las localidades pendientes se intenten descargar
-    import descargar_localidad_osm
-    descargar_localidad_osm.ejecutar()
+    if not os.path.exists(PUNTOS_CSV):
+        print(f"[ERROR CRITICO] No existe el archivo CSV en: {PUNTOS_CSV}")
+        sys.exit(1)
 
     features_upz = obtener_poligonos_upz()
     upz_registros, upz_geoms = [], []
@@ -84,12 +111,15 @@ def construir_bd():
 
     os.makedirs(os.path.dirname(DB_BACKEND_PATH), exist_ok=True)
     if os.path.exists(DB_BACKEND_PATH):
-        os.remove(DB_BACKEND_PATH)
+        try:
+            os.remove(DB_BACKEND_PATH)
+        except PermissionError:
+            print("[ERROR CRITICO] El archivo backend/data/accidentes_bogota_spatialite.db esta bloqueado por Spring Boot o DBeaver. Deten Spring Boot (Ctrl+C) e intenta de nuevo.")
+            sys.exit(1)
 
     conn = sqlite3.connect(DB_BACKEND_PATH)
     cur = conn.cursor()
 
-    # 1. Catalogo SpatiaLite
     cur.execute("CREATE TABLE geometry_columns (f_table_name TEXT, f_geometry_column TEXT, geometry_type TEXT, coord_dimension INTEGER, srid INTEGER, spatial_index_enabled INTEGER);")
     cur.execute("CREATE TABLE spatial_ref_sys (srid INTEGER PRIMARY KEY, auth_name TEXT, auth_srid INTEGER, ref_sys_name TEXT);")
     cur.execute("INSERT INTO spatial_ref_sys VALUES (4326, 'epsg', 4326, 'WGS 84');")
@@ -99,27 +129,34 @@ def construir_bd():
         ("upz_bogota", "MULTIPOLYGON")
     ])
 
-    # 2. Tabla puntos_accidentes (3.406 accidentes)
     cur.execute("""
         CREATE TABLE puntos_accidentes (
             id_local INTEGER PRIMARY KEY AUTOINCREMENT,
-            CODIGO_ACCIDENTE TEXT, FECHA TEXT, HORA TEXT, GRAVEDAD TEXT, GRAVEDAD_DESC TEXT,
+            CODIGO_ACCIDENTE TEXT UNIQUE, FECHA TEXT, HORA TEXT, GRAVEDAD TEXT, GRAVEDAD_DESC TEXT,
             CLASE_DESC TEXT, CHOQUE_DESC TEXT, DIRECCION TEXT, DIRECCION_COMPLETA TEXT,
             CODIGO_LOCALIDAD TEXT, CODIGO_UPZ TEXT, NOMBRE_UPZ TEXT, geom TEXT NOT NULL
         );
     """)
 
-    with open(PUNTOS_GEOJSON, "r", encoding="utf-8") as f:
-        puntos_fc = json.load(f)
-
+    codigos_vistos = set()
     acc_rows = []
-    for feat in puntos_fc.get("features", []):
-        geom = feat.get("geometry") or {}
-        coords = geom.get("coordinates", [])
-        if geom.get("type") != "Point" or len(coords) < 2: continue
-        lon, lat = float(coords[0]), float(coords[1])
-        pt = Point(lon, lat)
+    duplicados_omitidos = 0
+    conteo_csv = 0
+    conteo_geojson = 0
 
+    def registrar_punto(cod_acc, fecha, anio_col, mes_col, hora, grav_raw, grav_desc, clase_desc, choque_desc, dir_corta, dir_comp, cod_loc, lon, lat):
+        nonlocal duplicados_omitidos
+        cod_clean = str(cod_acc or "").strip()
+        if cod_clean.endswith(".0"):
+            cod_clean = cod_clean[:-2]
+        if cod_clean:
+            if cod_clean in codigos_vistos:
+                duplicados_omitidos += 1
+                return False
+            codigos_vistos.add(cod_clean)
+
+        fecha_norm = normalizar_fecha_iso(fecha, anio_col, mes_col)
+        pt = Point(lon, lat)
         upz_match = None
         if tree is not None:
             for c_idx in tree.query(pt):
@@ -129,26 +166,69 @@ def construir_bd():
                 nearest_idx = min(range(len(upz_geoms)), key=lambda i: upz_geoms[i].distance(pt))
                 upz_match = upz_registros[nearest_idx]
 
-        props = feat.get("properties") or {}
-        grav = str(props.get("GRAVEDAD") or "3").strip()
+        grav_code = inferir_codigo_gravedad(grav_raw, grav_desc)
         if upz_match:
             upz_match["total_accidentes"] += 1
-            if grav == "1": upz_match["muertos"] += 1
-            elif grav == "2": upz_match["heridos"] += 1
+            if grav_code == "1": upz_match["muertos"] += 1
+            elif grav_code == "2": upz_match["heridos"] += 1
             else: upz_match["solo_danos"] += 1
 
         acc_rows.append((
-            str(props.get("CODIGO_ACCIDENTE") or ""), str(props.get("FECHA") or ""), str(props.get("HORA") or ""),
-            grav, str(props.get("GRAVEDAD_DESC") or "Solo daños"), str(props.get("CLASE_DESC") or ""),
-            str(props.get("CHOQUE_DESC") or ""), str(props.get("DIRECCION") or ""),
-            str(props.get("DIRECCION_COMPLETA") or props.get("DIRECCION") or ""),
-            str(props.get("CODIGO_LOCALIDAD") or ""),
+            cod_clean, fecha_norm, str(hora or "").strip(),
+            grav_code, str(grav_desc or "Solo daños").strip(), str(clase_desc or "").strip(),
+            str(choque_desc or "Vehículo").strip(), str(dir_corta or "").strip(),
+            str(dir_comp or dir_corta or "").strip(), str(cod_loc or "").strip(),
             upz_match["codigo_upz"] if upz_match else "",
             upz_match["nombre"] if upz_match else "",
             f"POINT({lon} {lat})"
         ))
+        return True
 
-    cur.executemany("INSERT INTO puntos_accidentes (CODIGO_ACCIDENTE, FECHA, HORA, GRAVEDAD, GRAVEDAD_DESC, CLASE_DESC, CHOQUE_DESC, DIRECCION, DIRECCION_COMPLETA, CODIGO_LOCALIDAD, CODIGO_UPZ, NOMBRE_UPZ, geom) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);", acc_rows)
+    # 1. Leer CSV Nuevo (6.321 registros 2015-2020)
+    print(f"2. Procesando CSV consolidado: {PUNTOS_CSV}...")
+    with open(PUNTOS_CSV, "r", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            try:
+                lat = float(str(row.get("LATITUD", "")).replace(",", ".").strip())
+                lon = float(str(row.get("LONGITUD", "")).replace(",", ".").strip())
+            except ValueError:
+                continue
+            if registrar_punto(
+                row.get("CODIGO_ACCIDENTE"), row.get("FECHA"), row.get("ANIO"), row.get("MES"),
+                row.get("HORA"), row.get("GRAVEDAD"), row.get("GRAVEDAD_DESC"), row.get("CLASE_DESC"),
+                row.get("CHOQUE_DESC"), row.get("DIRECCION"), row.get("DIRECCION_COMPLETA"),
+                row.get("CODIGO_LOCALIDAD"), lon, lat
+            ):
+                conteo_csv += 1
+    print(f"   -> Insertados desde CSV nuevo: {conteo_csv:,} siniestros.")
+
+    # 2. Fusionar con GeoJSON anterior (3.406 registros) omitiendo duplicados
+    if os.path.exists(PUNTOS_GEOJSON):
+        print(f"3. Fusionando con GeoJSON anterior: {os.path.basename(PUNTOS_GEOJSON)}...")
+        with open(PUNTOS_GEOJSON, "r", encoding="utf-8") as f:
+            puntos_fc = json.load(f)
+        for feat in puntos_fc.get("features", []):
+            geom = feat.get("geometry") or {}
+            coords = geom.get("coordinates", [])
+            if geom.get("type") != "Point" or len(coords) < 2: continue
+            lon, lat = float(coords[0]), float(coords[1])
+            props = feat.get("properties") or {}
+            if registrar_punto(
+                props.get("CODIGO_ACCIDENTE"), props.get("FECHA"), props.get("ANIO"), props.get("MES"),
+                props.get("HORA"), props.get("GRAVEDAD"), props.get("GRAVEDAD_DESC"), props.get("CLASE_DESC"),
+                props.get("CHOQUE_DESC"), props.get("DIRECCION"), props.get("DIRECCION_COMPLETA"),
+                props.get("CODIGO_LOCALIDAD"), lon, lat
+            ):
+                conteo_geojson += 1
+        print(f"   -> Adicionales unicos desde GeoJSON: {conteo_geojson:,} (Duplicados omitidos: {duplicados_omitidos:,}).")
+
+    cur.executemany("""
+        INSERT OR IGNORE INTO puntos_accidentes (
+            CODIGO_ACCIDENTE, FECHA, HORA, GRAVEDAD, GRAVEDAD_DESC, CLASE_DESC,
+            CHOQUE_DESC, DIRECCION, DIRECCION_COMPLETA, CODIGO_LOCALIDAD, CODIGO_UPZ, NOMBRE_UPZ, geom
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);
+    """, acc_rows)
     cur.execute("CREATE INDEX idx_acc_fecha ON puntos_accidentes(FECHA);")
     cur.execute("CREATE INDEX idx_acc_upz ON puntos_accidentes(CODIGO_UPZ);")
 
@@ -212,22 +292,27 @@ def construir_bd():
     ])
 
     conn.commit()
+
+    # AUDITORIA REAL DESDE SQLITE
+    resumen_anios = cur.execute("SELECT substr(FECHA,1,4) AS anio, COUNT(*) FROM puntos_accidentes GROUP BY anio ORDER BY anio DESC;").fetchall()
+    resumen_meses = cur.execute("SELECT substr(FECHA,6,2) AS mes, COUNT(*) FROM puntos_accidentes GROUP BY mes ORDER BY mes ASC;").fetchall()
+    total_final = cur.execute("SELECT COUNT(*) FROM puntos_accidentes;").fetchone()[0]
     conn.close()
 
-    # Copiar tambien a la raiz para que DBeaver siempre vea la misma base de datos poblada
     try:
         shutil.copy2(DB_BACKEND_PATH, DB_ROOT_PATH)
     except PermissionError:
-        print("Aviso: Cierra la conexion en DBeaver si deseas actualizar la copia de la raiz.")
+        print("Aviso: No se pudo copiar a la raiz porque DBeaver la tiene abierta, pero backend/data/ ya fue actualizada.")
 
-    print("=" * 65)
-    print(f"BASE DE DATOS CONSTRUIDA Y SINCRONIZADA:")
-    print(f"-> Ruta Backend : {DB_BACKEND_PATH}")
-    print(f"-> Ruta DBeaver : {DB_ROOT_PATH}")
-    print(f"-> Accidentes   : {len(acc_rows):,}")
-    print(f"-> Calles       : {len(calles_rows):,}")
-    print(f"-> UPZ / UPL    : {len(upz_registros):,}")
-    print("=" * 65)
+    print("\n" + "=" * 68)
+    print(f"AUDITORIA SQLITE DE PUNTOS_ACCIDENTES (TOTAL: {total_final:,} SINIESTROS)")
+    print("=" * 68)
+    print("Distribución por Año en la Base de Datos:")
+    for a, c in resumen_anios:
+        print(f"   * Año {a}: {c:,} accidentes")
+    print("\nDistribución por Mes en la Base de Datos:")
+    print("   " + ", ".join([f"Mes {m}: {c}" for m, c in resumen_meses]))
+    print("=" * 68)
 
 if __name__ == "__main__":
     construir_bd()

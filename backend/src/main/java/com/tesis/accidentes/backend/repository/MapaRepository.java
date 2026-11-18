@@ -48,7 +48,7 @@ public class MapaRepository {
         }, params.toArray());
     }
 
-    public List<GeoJsonFeatureDto> findAccidentes(String codigoLocalidad, String anio, String mes, String dia, String codigoUpz) {
+    public List<GeoJsonFeatureDto> findAccidentes(String codigoLocalidad, String anio, String mes, String codigoUpz) {
         StringBuilder sql = new StringBuilder(
             "SELECT id_local, CODIGO_ACCIDENTE, FECHA, HORA, GRAVEDAD, GRAVEDAD_DESC, " +
             "CLASE_DESC, CHOQUE_DESC, DIRECCION, DIRECCION_COMPLETA, CODIGO_LOCALIDAD, " +
@@ -70,12 +70,6 @@ public class MapaRepository {
             String mesPad = mes.trim().length() == 1 ? "0" + mes.trim() : mes.trim();
             sql.append(" AND substr(FECHA, 6, 2) = ?");
             params.add(mesPad);
-        }
-
-        if (dia != null && !dia.isBlank() && !dia.equalsIgnoreCase("all")) {
-            String diaPad = dia.trim().length() == 1 ? "0" + dia.trim() : dia.trim();
-            sql.append(" AND substr(FECHA, 9, 2) = ?");
-            params.add(diaPad);
         }
 
         if (codigoUpz != null && !codigoUpz.isBlank() && !codigoUpz.equalsIgnoreCase("all")) {
@@ -104,7 +98,7 @@ public class MapaRepository {
         }, params.toArray());
     }
 
-    public List<GeoJsonFeatureDto> findUpzPolygons(String codigoLocalidad, String anio, String mes, String dia) {
+    public List<GeoJsonFeatureDto> findUpzPolygons(String codigoLocalidad, String anio, String mes) {
         StringBuilder sql = new StringBuilder(
             "SELECT u.id_local, u.codigo_upz, u.nombre, u.codigo_localidad, u.geom, " +
             "COUNT(p.id_local) AS total_accidentes, " +
@@ -125,12 +119,6 @@ public class MapaRepository {
             String mesPad = mes.trim().length() == 1 ? "0" + mes.trim() : mes.trim();
             sql.append(" AND substr(p.FECHA, 6, 2) = ?");
             params.add(mesPad);
-        }
-
-        if (dia != null && !dia.isBlank() && !dia.equalsIgnoreCase("all")) {
-            String diaPad = dia.trim().length() == 1 ? "0" + dia.trim() : dia.trim();
-            sql.append(" AND substr(p.FECHA, 9, 2) = ?");
-            params.add(diaPad);
         }
 
         sql.append(" WHERE 1=1");

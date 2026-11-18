@@ -1,74 +1,169 @@
 <aside class="sidebar">
-  <div class="sidebar-header">
-    <div class="title-group">
-      <h2>Visualizador Geoespacial</h2>
-      <span class="badge">Spring Boot + SpatiaLite</span>
-    </div>
-    <p class="subtitle">Análisis de siniestralidad en Bogotá D.C.</p>
-  </div>
-
-  <div class="sidebar-content">
-    <section class="control-card">
-      <div class="section-title">
-        <h3>Modo de Visualización</h3>
+  <header class="sidebar-header">
+    <div class="brand-row">
+      <div class="brand-titles">
+        <span class="eyebrow">SISTEMA DE ANÁLISIS Y PREDICCIÓN VIAL</span>
+        <h2>Siniestralidad Bogotá D.C.</h2>
       </div>
-      <div class="mode-selector-grid">
-        <button type="button" class="mode-btn" [class.active]="mapState.visualizationMode() === 'points'" (click)="onSelectMode('points')">
-          <span class="mode-label">Puntos de Evento</span>
+      <button
+        type="button"
+        class="btn-inline-reset"
+        *ngIf="mapState.hasActiveFilters()"
+        (click)="resetFilters()"
+        title="Limpiar filtros y predicciones"
+      >
+        Restablecer
+      </button>
+    </div>
+
+    <!-- PESTAÑAS PRINCIPALES DE NAVEGACIÓN -->
+    <div class="main-tabs">
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="mapState.activeSidebarTab() === 'explorer'"
+        (click)="onSwitchTab('explorer')"
+      >
+        Explorar Mapa
+      </button>
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="mapState.activeSidebarTab() === 'predictor'"
+        (click)="onSwitchTab('predictor')"
+      >
+        Estimador ML
+        <span class="tab-dot" *ngIf="mapState.predictionResult()"></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- =====================================================================
+       VISTA 1: EXPLORADOR HISTÓRICO Y CARTOGRÁFICO
+       ===================================================================== -->
+  <div class="sidebar-content" *ngIf="mapState.activeSidebarTab() === 'explorer'">
+    <section class="control-group">
+      <div class="group-header">
+        <span class="group-title">Representación Cartográfica</span>
+      </div>
+      <div class="segmented-control">
+        <button
+          type="button"
+          class="segment-btn"
+          [class.active]="mapState.visualizationMode() === 'points'"
+          (click)="onSelectMode('points')"
+        >
+          Puntos
         </button>
-        <button type="button" class="mode-btn" [class.active]="mapState.visualizationMode() === 'heatmap'" (click)="onSelectMode('heatmap')">
-          <span class="mode-label">Mapa de Calor</span>
+        <button
+          type="button"
+          class="segment-btn"
+          [class.active]="mapState.visualizationMode() === 'heatmap'"
+          (click)="onSelectMode('heatmap')"
+        >
+          Densidad
         </button>
-        <button type="button" class="mode-btn" [class.active]="mapState.visualizationMode() === 'choropleth'" (click)="onSelectMode('choropleth')">
-          <span class="mode-label">Coropletas UPZ</span>
+        <button
+          type="button"
+          class="segment-btn"
+          [class.active]="mapState.visualizationMode() === 'choropleth'"
+          (click)="onSelectMode('choropleth')"
+        >
+          Coropletas UPZ
         </button>
       </div>
     </section>
 
-    <section class="control-card">
-      <div class="section-title">
-        <h3>Sectorización y Malla Vial</h3>
+    <section class="control-group">
+      <div class="group-header">
+        <span class="group-title">Periodo de Análisis</span>
+        <span class="group-Counter">{{ mapState.accidentCount() | number }} registros</span>
       </div>
-      <div class="field-group">
-        <label for="upz-select">Unidad de Planeamiento (UPZ / UPL):</label>
-        <div class="select-wrapper">
-          <select id="upz-select" (change)="onUpzChange($event)" [value]="mapState.selectedUpz()">
-            <option value="all">Toda Bogotá D.C. (General)</option>
-            <option *ngFor="let u of mapState.availableUpzList()" [value]="u.codigo">
-              {{ u.nombre }} ({{ u.totalAccidentes }} siniestros)
-            </option>
+
+      <div class="temporal-grid">
+        <div class="field-box">
+          <label for="year-select">Año</label>
+          <select id="year-select" (change)="onYearChange($event)" [value]="mapState.selectedYear()">
+            <option value="all">Todos (2015–2020)</option>
+            <option *ngFor="let anio of mapState.availableYears()" [value]="anio">{{ anio }}</option>
+          </select>
+        </div>
+
+        <div class="field-box">
+          <label for="month-select">Mes</label>
+          <select id="month-select" (change)="onMonthChange($event)" [value]="mapState.selectedMonth()">
+            <option value="all">Todos los meses</option>
+            <option *ngFor="let m of mapState.months" [value]="m.value">{{ m.label }}</option>
           </select>
         </div>
       </div>
 
-      <div class="hierarchy-list" style="margin-top: 4px;">
-        <label class="hierarchy-item">
-          <input type="checkbox" [checked]="mapState.showRoadNetwork()" (change)="onToggleRoadNetwork()" />
-          <div class="hierarchy-meta">
-            <span class="hierarchy-name">Mostrar Malla Vial (Calles)</span>
-            <span class="hierarchy-desc">{{ mapState.roadCount() | number }} tramos visibles</span>
-          </div>
-        </label>
+      <label class="switch-row">
+        <div class="switch-text">
+          <span class="switch-title">Capa de Siniestralidad Activa</span>
+          <span class="switch-sub">Superpuesta sobre la red vial</span>
+        </div>
+        <input
+          type="checkbox"
+          class="toggle-input"
+          [checked]="mapState.showAccidentPoints()"
+          (change)="onToggleAccidents()"
+        />
+      </label>
+    </section>
 
-        <label class="hierarchy-item" *ngIf="mapState.showRoadNetwork()">
-          <input type="checkbox" [checked]="mapState.autoFilterByZoom()" (change)="onToggleZoomFilter()" />
-          <div class="hierarchy-meta">
-            <span class="hierarchy-name">Detalle Progresivo por Zoom</span>
-            <span class="hierarchy-desc">Lejos: principales | Cerca (Zoom &ge; 14): residenciales</span>
-          </div>
-        </label>
+    <section class="control-group">
+      <div class="group-header">
+        <span class="group-title">Sectorización y Red Vial</span>
+        <span class="group-Counter" *ngIf="mapState.showRoadNetwork()">{{ mapState.roadCount() | number }} vías</span>
       </div>
 
-      <div class="field-group" *ngIf="mapState.showRoadNetwork()">
-        <div class="slider-header">
-          <label for="road-opacity-slider">Transparencia / Opacidad de Vías:</label>
-          <span class="slider-value">{{ (mapState.roadOpacity() * 100) | number:'1.0-0' }}%</span>
+      <div class="field-box">
+        <label for="upz-select">Unidad de Planeamiento (UPZ / UPL)</label>
+        <select id="upz-select" (change)="onUpzChange($event)" [value]="mapState.selectedUpz()">
+          <option value="all">Toda Bogotá D.C. (Distrito Completo)</option>
+          <option *ngFor="let u of mapState.availableUpzList()" [value]="u.codigo">
+            {{ u.nombre }} ({{ u.totalAccidentes }})
+          </option>
+        </select>
+      </div>
+
+      <label class="switch-row">
+        <div class="switch-text">
+          <span class="switch-title">Mostrar Malla Vial</span>
+          <span class="switch-sub">Trazado vectorial de corredores</span>
+        </div>
+        <input
+          type="checkbox"
+          class="toggle-input"
+          [checked]="mapState.showRoadNetwork()"
+          (change)="onToggleRoadNetwork()"
+        />
+      </label>
+
+      <label class="switch-row" *ngIf="mapState.showRoadNetwork()">
+        <div class="switch-text">
+          <span class="switch-title">Detalle Progresivo por Zoom</span>
+          <span class="switch-sub">Oculta vías barriales en vista lejana</span>
+        </div>
+        <input
+          type="checkbox"
+          class="toggle-input"
+          [checked]="mapState.autoFilterByZoom()"
+          (change)="onToggleZoomFilter()"
+        />
+      </label>
+
+      <div class="slider-box" *ngIf="mapState.showRoadNetwork()">
+        <div class="slider-top">
+          <label for="road-opacity-slider">Opacidad del Trazado Vial</label>
+          <span class="slider-badge">{{ (mapState.roadOpacity() * 100) | number:'1.0-0' }}%</span>
         </div>
         <input
           id="road-opacity-slider"
           type="range"
-          class="opacity-slider"
-          min="0.1"
+          class="range-input"
+          min="0.15"
           max="1"
           step="0.05"
           [value]="mapState.roadOpacity()"
@@ -76,108 +171,292 @@
         />
       </div>
 
-      <div class="field-group" *ngIf="mapState.showRoadNetwork() && mapState.roadCount() > 0">
-        <label for="road-search">Buscar vía por nombre:</label>
-        <div class="search-box">
-          <input id="road-search" type="text" placeholder="Ej: Carrera 7, Calle 100..." [(ngModel)]="searchQueryText" (keyup.enter)="onSearch()" />
-          <button type="button" class="btn-search-action" (click)="onSearch()">Buscar</button>
+      <div class="field-box" *ngIf="mapState.showRoadNetwork() && mapState.roadCount() > 0">
+        <label for="road-search">Localizar corredor vial</label>
+        <div class="search-bar">
+          <input
+            id="road-search"
+            type="text"
+            placeholder="Ej: Carrera 7, Calle 100..."
+            [(ngModel)]="searchQueryText"
+            (keyup.enter)="onSearch()"
+          />
+          <button type="button" class="btn-search" (click)="onSearch()">Ir</button>
         </div>
-        <div class="search-actions-row" *ngIf="mapState.activeSearchQuery().length > 0">
-          <label class="isolate-label">
+        <div class="search-Subactions" *ngIf="mapState.activeSearchQuery().length > 0">
+          <label class="mini-check">
             <input type="checkbox" [checked]="mapState.isolateSearchedRoad()" (change)="onToggleIsolate()" />
-            Ocultar las demás vías
+            Aislar vía buscada
           </label>
-          <button type="button" class="btn-clear-search" (click)="onClearSearch()">Quitar filtro</button>
+          <button type="button" class="btn-clear" (click)="onClearSearch()">Limpiar búsqueda</button>
         </div>
       </div>
     </section>
 
-    <section class="control-card">
-      <div class="section-title">
-        <h3>Filtros Temporales Reactivos</h3>
+    <section class="control-group" *ngIf="mapState.showRoadNetwork()">
+      <div class="group-header">
+        <span class="group-title">Jerarquía Vial Habilitada</span>
       </div>
-
-      <div class="field-group">
-        <label for="year-select">Año de ocurrencia:</label>
-        <div class="select-wrapper">
-          <select id="year-select" (change)="onYearChange($event)" [value]="mapState.selectedYear()">
-            <option value="all">Todos los años</option>
-            <option *ngFor="let anio of mapState.availableYears()" [value]="anio">Año {{ anio }}</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="date-subgrid">
-        <div class="field-group">
-          <label for="month-select">Mes:</label>
-          <div class="select-wrapper">
-            <select id="month-select" (change)="onMonthChange($event)" [value]="mapState.selectedMonth()">
-              <option value="all">Todos los meses</option>
-              <option *ngFor="let m of mapState.months" [value]="m.value">{{ m.label }}</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="field-group">
-          <label for="day-select">Día:</label>
-          <div class="select-wrapper">
-            <select id="day-select" (change)="onDayChange($event)" [value]="mapState.selectedDay()">
-              <option value="all">Todos</option>
-              <option *ngFor="let d of mapState.days" [value]="d">Día {{ d }}</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div class="hierarchy-list">
-        <label class="hierarchy-item">
-          <input type="checkbox" [checked]="mapState.showAccidentPoints()" (change)="onToggleAccidents()" />
-          <div class="hierarchy-meta">
-            <span class="hierarchy-name">Mostrar Capa de Siniestralidad</span>
-            <span class="hierarchy-desc">{{ mapState.accidentCount() | number }} siniestros en la fecha seleccionada</span>
-          </div>
-        </label>
-      </div>
-    </section>
-
-    <section class="control-card" *ngIf="mapState.showRoadNetwork()">
-      <div class="section-title">
-        <h3>Jerarquía Vial Habilitada</h3>
-      </div>
-      <div class="hierarchy-list">
-        <label class="hierarchy-item">
+      <div class="hierarchy-grid">
+        <label class="check-card" [class.checked]="mapState.selectedRoadTypes()['primary']">
           <input type="checkbox" [checked]="mapState.selectedRoadTypes()['primary']" (change)="onToggleType('primary')" />
-          <div class="hierarchy-meta">
-            <span class="hierarchy-name">Arteriales / Troncales</span>
-            <span class="hierarchy-desc">Visibles en todos los niveles de zoom</span>
+          <span class="color-indicator primary"></span>
+          <div class="check-info">
+            <span class="check-name">Arterial / Troncal</span>
+            <span class="check-zoom">Todo nivel de zoom</span>
           </div>
         </label>
-        <label class="hierarchy-item">
+
+        <label class="check-card" [class.checked]="mapState.selectedRoadTypes()['secondary']">
           <input type="checkbox" [checked]="mapState.selectedRoadTypes()['secondary']" (change)="onToggleType('secondary')" />
-          <div class="hierarchy-meta">
-            <span class="hierarchy-name">Vías Secundarias</span>
-            <span class="hierarchy-desc">Visibles desde Zoom &ge; 12</span>
+          <span class="color-indicator secondary"></span>
+          <div class="check-info">
+            <span class="check-name">Secundaria</span>
+            <span class="check-zoom">Zoom &ge; 12</span>
           </div>
         </label>
-        <label class="hierarchy-item">
+
+        <label class="check-card" [class.checked]="mapState.selectedRoadTypes()['tertiary']">
           <input type="checkbox" [checked]="mapState.selectedRoadTypes()['tertiary']" (change)="onToggleType('tertiary')" />
-          <div class="hierarchy-meta">
-            <span class="hierarchy-name">Vías Colectoras</span>
-            <span class="hierarchy-desc">Visibles desde Zoom &ge; 13</span>
+          <span class="color-indicator tertiary"></span>
+          <div class="check-info">
+            <span class="check-name">Colectora</span>
+            <span class="check-zoom">Zoom &ge; 13</span>
           </div>
         </label>
-        <label class="hierarchy-item">
+
+        <label class="check-card" [class.checked]="mapState.selectedRoadTypes()['residential']">
           <input type="checkbox" [checked]="mapState.selectedRoadTypes()['residential']" (change)="onToggleType('residential')" />
-          <div class="hierarchy-meta">
-            <span class="hierarchy-name">Vías Residenciales</span>
-            <span class="hierarchy-desc">Visibles al acercar a Zoom &ge; 14</span>
+          <span class="color-indicator residential"></span>
+          <div class="check-info">
+            <span class="check-name">Residencial / Local</span>
+            <span class="check-zoom">Zoom &ge; 14</span>
           </div>
         </label>
       </div>
     </section>
   </div>
 
-  <div class="sidebar-footer">
-    <button class="btn-reset" (click)="resetFilters()">Restablecer Vista General</button>
+  <!-- =====================================================================
+       VISTA 2: ESTIMADOR DE RIESGO VIAL (MICROSERVICIO FASTAPI ML v1.2.0)
+       ===================================================================== -->
+  <div class="sidebar-content" *ngIf="mapState.activeSidebarTab() === 'predictor'">
+    <section class="control-group">
+      <div class="group-header">
+        <span class="group-title">1. Actores y Vehículos Implicados</span>
+        <span class="group-Counter">FastAPI v1.2</span>
+      </div>
+
+      <div class="three-col-grid">
+        <div class="field-box">
+          <label for="ml-actores" title="¿Cuántas personas viales estuvieron involucradas?">Personas</label>
+          <input
+            id="ml-actores"
+            type="number"
+            min="1"
+            max="50"
+            [(ngModel)]="totalActores"
+          />
+        </div>
+
+        <div class="field-box">
+          <label for="ml-vehiculos" title="¿Cuántos vehículos estuvieron involucrados?">Vehículos</label>
+          <input
+            id="ml-vehiculos"
+            type="number"
+            min="0"
+            max="30"
+            [(ngModel)]="totalVehiculos"
+          />
+        </div>
+
+        <div class="field-box">
+          <label for="ml-ciclistas" title="¿Cuántos ciclistas estuvieron involucrados?">Ciclistas</label>
+          <input
+            id="ml-ciclistas"
+            type="number"
+            min="0"
+            max="20"
+            [(ngModel)]="cantCiclistas"
+          />
+        </div>
+      </div>
+    </section>
+
+    <section class="control-group">
+      <div class="group-header">
+        <span class="group-title">2. Tipología y Condición del Evento</span>
+      </div>
+
+      <div class="field-box">
+        <label for="ml-tipo-choque">Modalidad de choque</label>
+        <select id="ml-tipo-choque" [(ngModel)]="tipoChoqueSeleccionado">
+          <option value="colision_vehiculo">Colisión contra vehículo</option>
+          <option value="sin_registro">Sin choque registrado (caída de ocupante)</option>
+          <option value="otro">Atropello / Vuelco / Otro</option>
+        </select>
+      </div>
+
+      <label class="switch-row">
+        <div class="switch-text">
+          <span class="switch-title">¿Impactó contra objeto fijo?</span>
+          <span class="switch-sub">Poste, muro, baranda o semáforo</span>
+        </div>
+        <input
+          type="checkbox"
+          class="toggle-input"
+          [(ngModel)]="impactoObjetoFijo"
+        />
+      </label>
+
+      <div class="field-box" style="margin-top: 2px;">
+        <label>Participación de vehículos pesados / especiales</label>
+        <div class="hierarchy-grid">
+          <label class="check-card" [class.checked]="participoCamionFurgon">
+            <input type="checkbox" [(ngModel)]="participoCamionFurgon" />
+            <span class="color-indicator primary"></span>
+            <div class="check-info">
+              <span class="check-name">Camión / Furgón</span>
+              <span class="check-zoom">{{ participoCamionFurgon ? 'Presente (1)' : 'No aplica (0)' }}</span>
+            </div>
+          </label>
+
+          <label class="check-card" [class.checked]="participoCampero">
+            <input type="checkbox" [(ngModel)]="participoCampero" />
+            <span class="color-indicator secondary"></span>
+            <div class="check-info">
+              <span class="check-name">Campero</span>
+              <span class="check-zoom">{{ participoCampero ? 'Presente (1)' : 'No aplica (0)' }}</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class="control-group">
+      <div class="group-header">
+        <span class="group-title">3. Georreferenciación y Estrategia</span>
+        <button type="button" class="btn-link-mini" (click)="showAdvancedMlConfig = !showAdvancedMlConfig">
+          {{ showAdvancedMlConfig ? 'Ocultar red' : 'Config. Red' }}
+        </button>
+      </div>
+
+      <div class="field-box">
+        <label for="ml-direccion">Ubicación en Bogotá (Opcional)</label>
+        <input
+          id="ml-direccion"
+          type="text"
+          placeholder="Ej: Calle 26 # 68-75 o Av. Boyacá con Calle 80"
+          [(ngModel)]="direccionSiniestro"
+          (keyup.enter)="onSubmitPrediction()"
+        />
+      </div>
+
+      <div class="field-box">
+        <label for="ml-estrategia">Estrategia de Inferencia</label>
+        <select id="ml-estrategia" [(ngModel)]="estrategiaModelo">
+          <option value="A">Estrategia A — Modelo Lite (8 variables clave)</option>
+          <option value="B">Estrategia B — Modelo Completo (49 variables)</option>
+        </select>
+      </div>
+
+      <div class="field-box" *ngIf="showAdvancedMlConfig">
+        <label for="ml-endpoint-url">URL Microservicio FastAPI (Local / LAN / Ngrok)</label>
+        <input
+          id="ml-endpoint-url"
+          type="text"
+          placeholder="http://localhost:8000/api/v1/predecir-riesgo"
+          [(ngModel)]="customMlUrl"
+        />
+      </div>
+
+      <button
+        type="button"
+        class="btn-predict-submit"
+        [disabled]="mapState.isPredicting()"
+        (click)="onSubmitPrediction()"
+      >
+        {{ mapState.isPredicting() ? 'Ejecutando Inferencia y Geocodificación...' : 'Estimar Nivel de Riesgo Vial' }}
+      </button>
+    </section>
+
+    <!-- MENSAJE DE ERROR DE CONEXIÓN -->
+    <div class="ml-error-banner" *ngIf="mapState.predictionError()">
+      {{ mapState.predictionError() }}
+    </div>
+
+    <!-- TARJETA DE RESULTADOS DE LA PREDICCIÓN -->
+    <section class="control-group prediction-result-card" *ngIf="mapState.predictionResult() as res">
+      <div class="result-top-row">
+        <div>
+          <span class="result-eyebrow">SEVERIDAD PREDICHA (ESTRATEGIA {{ res.estrategia_aplicada }})</span>
+          <h4 class="result-severity">{{ res.prediccion_descripcion }}</h4>
+        </div>
+        <span
+          class="risk-badge"
+          [style.backgroundColor]="mapState.getRiskLevelColor(res.nivel_riesgo)"
+          [style.color]="res.nivel_riesgo === 'MEDIO' ? '#0f172a' : '#ffffff'"
+        >
+          RIESGO {{ res.nivel_riesgo }}
+        </span>
+      </div>
+
+      <!-- DESGLOSE DE PROBABILIDADES -->
+      <div class="prob-list" *ngIf="res.probabilidades">
+        <div class="prob-item">
+          <div class="prob-label-row">
+            <span>Solo Daños (Cód. 0)</span>
+            <strong>{{ (res.probabilidades.solo_danos * 100) | number:'1.1-1' }}%</strong>
+          </div>
+          <div class="prob-bar-bg">
+            <div class="prob-bar-fill damage" [style.width.%]="res.probabilidades.solo_danos * 100"></div>
+          </div>
+        </div>
+
+        <div class="prob-item">
+          <div class="prob-label-row">
+            <span>Con Heridos (Cód. 1)</span>
+            <strong>{{ (res.probabilidades.con_heridos * 100) | number:'1.1-1' }}%</strong>
+          </div>
+          <div class="prob-bar-bg">
+            <div class="prob-bar-fill injury" [style.width.%]="res.probabilidades.con_heridos * 100"></div>
+          </div>
+        </div>
+
+        <div class="prob-item">
+          <div class="prob-label-row">
+            <span>Con Muertos (Cód. 2)</span>
+            <strong>{{ (res.probabilidades.con_muertos * 100) | number:'1.1-1' }}%</strong>
+          </div>
+          <div class="prob-bar-bg">
+            <div class="prob-bar-fill fatal" [style.width.%]="res.probabilidades.con_muertos * 100"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ESTADO DE GEOCODIFICACIÓN -->
+      <div class="geo-status-box" *ngIf="res.ubicacion as ubi">
+        <div class="geo-status-found" *ngIf="ubi.estado === 'ENCONTRADA'">
+          <span class="geo-tag success">UBICACIÓN GEORREFERENCIADA</span>
+          <p class="geo-address">{{ ubi.direccion_oficial || ubi.direccion_normalizada }}</p>
+          <span class="geo-coords">Lat: {{ ubi.latitud | number:'1.5-5' }} &bull; Lon: {{ ubi.longitud | number:'1.5-5' }}</span>
+        </div>
+
+        <div class="geo-status-info" *ngIf="ubi.estado === 'NO_SOLICITADA'">
+          <span class="geo-tag neutral">SIN GEOCODIFICACIÓN</span>
+          <p class="geo-address">No se ingresó dirección. Inferencia calculada únicamente a partir de variables viales.</p>
+        </div>
+
+        <div class="geo-status-warn" *ngIf="ubi.estado === 'NO_ENCONTRADA'">
+          <span class="geo-tag warn">DIRECCIÓN NO LOCALIZADA</span>
+          <p class="geo-address">Nominatim no ubicó "{{ ubi.direccion_ingresada }}". Intente ingresar una intersección cercana (ej. "Calle 26 con Carrera 68").</p>
+        </div>
+
+        <div class="geo-status-warn" *ngIf="ubi.estado === 'ERROR_SERVICIO' || ubi.estado === 'DEPENDENCIA_FALTANTE'">
+          <span class="geo-tag warn">SERVICIO GEOCODER NO DISPONIBLE</span>
+          <p class="geo-address">La predicción del modelo ML es válida, pero el geocodificador externo no respondió a tiempo ({{ ubi.estado }}).</p>
+        </div>
+      </div>
+    </section>
   </div>
 </aside>

@@ -32,18 +32,16 @@ public class MapaController {
             @RequestParam(required = false) String localidad,
             @RequestParam(required = false) String anio,
             @RequestParam(required = false) String mes,
-            @RequestParam(required = false) String dia,
             @RequestParam(required = false) String upz) {
-        return ResponseEntity.ok(mapaService.obtenerAccidentes(localidad, anio, mes, dia, upz));
+        return ResponseEntity.ok(mapaService.obtenerAccidentes(localidad, anio, mes, upz));
     }
 
     @GetMapping("/upz")
     public ResponseEntity<GeoJsonCollectionDto> getUpz(
             @RequestParam(required = false) String localidad,
             @RequestParam(required = false) String anio,
-            @RequestParam(required = false) String mes,
-            @RequestParam(required = false) String dia) {
-        return ResponseEntity.ok(mapaService.obtenerUpz(localidad, anio, mes, dia));
+            @RequestParam(required = false) String mes) {
+        return ResponseEntity.ok(mapaService.obtenerUpz(localidad, anio, mes));
     }
 
     @GetMapping("/anios")
